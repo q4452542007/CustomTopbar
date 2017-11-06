@@ -1,0 +1,44 @@
+<resources>
+    <string name="app_name">Mapsoft3</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="home">首页</string>
+    <string name="path">切换线路</string>
+    <string name="affair">事务</string>
+    <string name="option">设置</string>
+
+    <string name="loc_Longitude">经度：</string>
+    <string name="loc_latitude">纬度：</string>
+    <string name="loc_time">时间：</string>
+    <string name="loc_satellite_num">卫星数：</string>
+    <string name="loc_speed">速度：</string>
+    <string name="loc_reset">"  复  位  "</string>
+    <string name="reset">复位</string>
+    <string name="exit_button">退出</string>
+    <string name="info_unknow">未知</string>
+    <string name="info_unknow_site">未知位置</string>
+    <string name="startlocation">开始定位</string>
+    <string name="stoplocation">停止定位</string>
+
+    <string name="gsm_isgsm">是否是GSM:</string>
+    <string name="gsm_cdma_dbm">CDMA 信号强度:</string>
+    <string name="gsm_cdma_ecio">CDMA 载干比:</string>
+    <string name="gsm_evdo_dbm">EVDO 信号强度:</string>
+    <string name="gsm_evdo_ecio">EVDO 载干比:</string>
+    <string name="gsm_gsm_signal">GSM 信号强度:</string>
+    <string name="gsm_gsm_bit">GSM 误码率:</string>
+
+    <string name="camera_channel_1">单通道1</string>
+    <string name="camera_channel_2">单通道2</string>
+    <string name="camera_channel_3">单通道3</string>
+    <string name="camera_channel_4">单通道4</string>
+    <string name="camera_channel_22">双通道</string>
+    <string name="camera_channel_44">4通道</string>
+    <string name="home_image_view_text">首页</string>
+    <string name="pond_image_view_text">鱼塘</string>
+    <string name="path_image_view_text">切换线路</string>
+    <string name="affair_image_view_text">事务</string>
+    <string name="option_image_view_text">设置</string>
+    </resources>

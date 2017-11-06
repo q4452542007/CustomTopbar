@@ -1,0 +1,111 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+    >
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="horizontal"
+        >
+
+        <RelativeLayout
+            android:id="@+id/home_layout_view"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:background="@drawable/kaoqin"
+            >
+
+
+            <!--<TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toRightOf="@id/home_image_view"
+                android:text="@string/home_image_view_text"
+                android:textColor="@color/color_333333"
+                android:textSize="30sp"-->
+            />
+        </RelativeLayout>
+
+
+
+        <RelativeLayout
+            android:id="@+id/path_layout_view"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:background="@drawable/xianlu"
+            >
+
+
+
+            <!--<TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toRightOf="@id/path_image_view"
+                android:text="@string/path_image_view_text"
+                android:textColor="@color/color_333333"
+                android:textSize="30sp"
+                />-->
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/affair_layout_view"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:background="@drawable/shijian"
+            >
+
+
+
+            <!--<TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toRightOf="@id/affair_image_view"
+                android:text="@string/affair_image_view_text"
+                android:textColor="@color/color_333333"
+                android:textSize="30sp"
+                />-->
+        </RelativeLayout>
+        <RelativeLayout
+            android:id="@+id/dvr_layout_view"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:background="@drawable/dvr"
+            >
+
+
+
+            <!--<TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toRightOf="@id/option_image_view"
+                android:text="@string/option_image_view_text"
+                android:textColor="@color/color_333333"
+                android:textSize="30sp"
+                />-->
+        </RelativeLayout>
+        <RelativeLayout
+            android:id="@+id/talk_layout_view"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:background="@drawable/hanhua"
+            >
+                />
+
+            <!--<TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toRightOf="@id/option_image_view"
+                android:text="@string/option_image_view_text"
+                android:textColor="@color/color_333333"
+                android:textSize="30sp"
+                />-->
+        </RelativeLayout>
+    </LinearLayout>
+</RelativeLayout>
