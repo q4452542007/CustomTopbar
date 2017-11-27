@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bgtalk1"
-    tools:context="mapsoft.com.costomtopbar.activity.MainActivity">
+    tools:context="mapsoft.com.costomtopbar.activity.MainActivity"
+    android:layout_marginBottom="60dp">
 
     <ImageButton
         android:id="@+id/sound_out"
@@ -12,15 +13,27 @@
         android:layout_height="wrap_content"
         android:layout_toRightOf="@+id/sound_in"
         android:layout_centerVertical="true"
-        android:layout_marginLeft="20dp"
-        android:background="@drawable/outcar"/>
+        android:layout_marginLeft="30dp"
+        android:background="@drawable/sound_out_car"/>
+
+
 
     <ImageButton
         android:id="@+id/sound_in"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
-        android:background="@drawable/incar"/>
+        android:background="@drawable/sound_in_car"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/sound_in"
+        android:text="车内声道"
+        android:textColor="@color/white"
+        android:layout_alignLeft="@+id/sound_in"
+        android:textSize="20sp"
+        android:layout_margin="10dp"/>
 
     <ImageButton
         android:id="@+id/sound_talk"
@@ -28,6 +41,27 @@
         android:layout_height="wrap_content"
         android:layout_toLeftOf="@id/sound_in"
         android:layout_centerVertical="true"
-        android:layout_marginRight="20dp"
-        android:background="@drawable/talk"/>
+        android:layout_marginRight="30dp"
+        android:background="@drawable/sound_talk"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/sound_out"
+        android:text="车外声道"
+        android:textColor="@color/white"
+        android:layout_alignLeft="@+id/sound_out"
+        android:textSize="20sp"
+        android:layout_margin="10dp"/>
+
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/sound_talk"
+        android:text="对讲声道"
+        android:textColor="@color/white"
+        android:layout_alignLeft="@+id/sound_talk"
+        android:textSize="20sp"
+        android:layout_margin="10dp"/>
 </RelativeLayout>

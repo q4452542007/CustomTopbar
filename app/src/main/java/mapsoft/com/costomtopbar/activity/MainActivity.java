@@ -1,90 +1,132 @@
 package mapsoft.com.costomtopbar.activity;
 
-import android.Manifest;
-import android.annotation.TargetApi;
+
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.os.Build;
+import android.content.ServiceConnection;
+
+
+import android.content.res.Configuration;
+import android.content.res.Resources;
+
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.PersistableBundle;
+import android.os.RemoteException;
 import android.secondbook.com.buttonfragment.R;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
-import java.util.ArrayList;
+
+import android.widget.Toast;
+
+import com.amap.api.location.AMapLocation;
+import com.amap.api.location.AMapLocationClient;
+import com.amap.api.location.AMapLocationClientOption;
+import com.amap.api.location.AMapLocationListener;
+import com.amap.api.location.AMapLocationQualityReport;
+
+
+import mapsoft.com.costomtopbar.IBackService;
+import mapsoft.com.costomtopbar.constant.Constant;
+import mapsoft.com.costomtopbar.fragment.AMapUtils;
 import mapsoft.com.costomtopbar.fragment.AffairFragment;
 import mapsoft.com.costomtopbar.fragment.ChangePathFragment;
 import mapsoft.com.costomtopbar.fragment.HomeFragment;
-import mapsoft.com.costomtopbar.fragment.OptionFragment;
+import mapsoft.com.costomtopbar.fragment.LoginFragment;
+import mapsoft.com.costomtopbar.fragment.DVRFragment;
 import mapsoft.com.costomtopbar.fragment.TalkFragment;
+import mapsoft.com.costomtopbar.jt808.JT808ProtocolUtils;
+import mapsoft.com.costomtopbar.jt808.LocationInfoUploadMsg;
+import mapsoft.com.costomtopbar.jt808.MsgEncoder;
+import mapsoft.com.costomtopbar.jt808.TPMSConsts;
+import mapsoft.com.costomtopbar.service.socket.BackService;
+import mapsoft.com.costomtopbar.service.socket.RigsterMessage;
+import mapsoft.com.costomtopbar.util.BitOperator;
+import mapsoft.com.costomtopbar.util.Utils;
+import mapsoft.com.costomtopbar.view.IconCut;
 import mapsoft.com.costomtopbar.view.Topbar;
 
 
-public class MainActivity extends BaseActivity implements OnClickListener {
+public class MainActivity extends BaseActivity implements OnClickListener, HomeFragment.FragmentInteraction{
+    private static final String TAG = "MainActivity";
     private final int SDK_PERMISSION_REQUEST = 127;
     /***
      * fragment相关
      */
     private HomeFragment mHomeFragment;
+    private LoginFragment mLoginFragment;
     private ChangePathFragment mChangePathFragment;
     private AffairFragment mAffairFragment;
-    private OptionFragment mOptionFragment;
+    private DVRFragment mDVRFragment;
     private TalkFragment mTalkFragment;
-
     private RelativeLayout mHomeLayout;
     private RelativeLayout mChangePathLayout;
     private RelativeLayout mAffairLayout;
-    private RelativeLayout mOptionLayout;
+    private RelativeLayout mDvrLayout;
     private RelativeLayout mTalkLayout;
-    private TextView mHomeView;
-    private TextView mPathView;
-    private TextView mAffairView;
-    private TextView mOptionView;
     private FragmentManager fm;
     private RelativeLayout mMain;
     private FragmentTransaction fragmentTransaction;
-    private String permissionInfo;
 
-    /**
-     * 获取网络状态
-     */
-    private IntentFilter mIntentFilter;
-    private NetworkChangeReceiver mNetworkChangeReceiver;
+    //socket相关
+    private Intent mServiceIntent;
+    private IBackService iBackService;
+
+    //自定义顶部栏
     private Topbar mTopbar;
 
+    private static byte[] message;
+
+    private BitOperator bitOperator;
+    private JT808ProtocolUtils jt808ProtocolUtils;
+    private MsgEncoder mMsgEncoder;
+
+    private LocationInfoUploadMsg mLocationInfoUploadMsg;
+    private int count = 0;
+    private int flow = 0;
+    private static Boolean isChecked = false;
+
+    private AMapLocationClient locationClient = null;
+    private AMapLocationClientOption locationOption = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+        Log.e("TAG", "Max memory is " + maxMemory + "KB");
 //        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         mMain = (RelativeLayout) findViewById(R.id.main);
         //mMain.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
-        mTopbar = findViewById(R.id.topbar);
+        mTopbar = (Topbar) findViewById(R.id.topbar);
         //获取网络状态
         /*mIntentFilter = new IntentFilter();
         mIntentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
         mNetworkChangeReceiver = new NetworkChangeReceiver();
         registerReceiver(mNetworkChangeReceiver, mIntentFilter);*/
-
-        findById();
-
+        mTopbar.setHomeButton(IconCut.getInstance(this).cutHomeIcon());
         // 進入系統默認為movie
         mHomeFragment = new HomeFragment();
         fm = getFragmentManager();
         FragmentTransaction fragmentTransaction = fm.beginTransaction();
         fragmentTransaction.replace(R.id.fragment_content, mHomeFragment);
         fragmentTransaction.commit();
-        
+        findById();
+        initData();
+    }
+
+    private void initData() {
+
     }
 
     @Override
@@ -92,28 +134,66 @@ public class MainActivity extends BaseActivity implements OnClickListener {
         super.onSaveInstanceState(outState, outPersistentState);
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        bindService(mServiceIntent, conn, BIND_AUTO_CREATE);
+        // 开始服务
+        registerReceiver();
+    }
+
     private void findById() {
+        mServiceIntent = new Intent(this, BackService.class);
         mHomeLayout = (RelativeLayout) findViewById(R.id.home_layout_view);
         mHomeLayout.setOnClickListener(this);
         mChangePathLayout = (RelativeLayout) findViewById(R.id.path_layout_view);
         mChangePathLayout.setOnClickListener(this);
         mAffairLayout = (RelativeLayout) findViewById(R.id.affair_layout_view);
         mAffairLayout.setOnClickListener(this);
-        mOptionLayout = (RelativeLayout) findViewById(R.id.dvr_layout_view);
-        mOptionLayout.setOnClickListener(this);
+        mDvrLayout = (RelativeLayout) findViewById(R.id.dvr_layout_view);
+        mDvrLayout.setOnClickListener(this);
         mTalkLayout = (RelativeLayout) findViewById(R.id.talk_layout_view);
-        mTalkLayout.setOnClickListener(this);
-        /*mHomeView = (TextView) this.findViewById(R.id.home_image_view);
+        mTalkLayout.setOnClickListener(this);/*
+        mHomeView = (TextView) this.findViewById(R.id.home_image_view);
         mPathView = (TextView) this.findViewById(R.id.path_image_view);
         mAffairView = (TextView) this.findViewById(R.id.affair_image_view);
         mOptionView = (TextView) this.findViewById(R.id.dvr_image_view);*/
         mHomeLayout.setOnClickListener(this);
         mChangePathLayout.setOnClickListener(this);
         mAffairLayout.setOnClickListener(this);
-        mOptionLayout.setOnClickListener(this);
+        mDvrLayout.setOnClickListener(this);
 
-        mHomeLayout.setBackgroundResource(R.drawable.kaoqinc);
+        bitOperator = new BitOperator();
+        jt808ProtocolUtils = new JT808ProtocolUtils();
+        mMsgEncoder = new MsgEncoder();
 
+        mHomeLayout.setBackgroundResource(R.drawable.shouyec);
+        mTopbar.setOnTopbarClickListener(new Topbar.topbarClickListener() {
+            @Override
+            public void leftClick() {
+
+            }
+
+            @Override
+            public void homeClick() {
+
+                try {
+                    Log.i(TAG, "是否为空：" + iBackService);
+                    if (iBackService == null) {
+                        Toast.makeText(getApplicationContext(),
+                                "没有连接，可能是服务器已断开", Toast.LENGTH_SHORT).show();
+                    } else {
+                        boolean isSend = iBackService.sendMessage(Constant.HEART);
+                        Toast.makeText(MainActivity.this,
+                                isSend ? "success" : "fail", Toast.LENGTH_SHORT)
+                                .show();
+                        //et.setText("");
+                    }
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 
     }
     private void hideFragment(Fragment fragment, FragmentTransaction ft){
@@ -128,17 +208,18 @@ public class MainActivity extends BaseActivity implements OnClickListener {
         fragmentTransaction = fm.beginTransaction();
         switch (v.getId()) {
             case R.id.home_layout_view:
-                mHomeLayout.setBackgroundResource(R.drawable.kaoqinc);
+                mHomeLayout.setBackgroundResource(R.drawable.shouyec);
                 mChangePathLayout.setBackgroundResource(R.drawable.xianlu);
                 mAffairLayout.setBackgroundResource(R.drawable.shijian);
-                mOptionLayout.setBackgroundResource(R.drawable.dvr);
+                mDvrLayout.setBackgroundResource(R.drawable.dvr);
                 mTalkLayout.setBackgroundResource(R.drawable.hanhua);
                 //显示Homefragment
+                hideFragment(mLoginFragment,fragmentTransaction);
                 hideFragment(mChangePathFragment,fragmentTransaction);
                 hideFragment(mAffairFragment,fragmentTransaction);
-                hideFragment(mOptionFragment,fragmentTransaction);
+                hideFragment(mDVRFragment,fragmentTransaction);
                 hideFragment(mTalkFragment, fragmentTransaction);
-                if (mHomeFragment == null){
+                if ( mHomeFragment == null){
                     mHomeFragment = new HomeFragment();
                     fragmentTransaction.add(R.id.fragment_content,mHomeFragment);
                 } else {
@@ -147,15 +228,15 @@ public class MainActivity extends BaseActivity implements OnClickListener {
                 break;
 
             case R.id.path_layout_view:
-                mHomeLayout.setBackgroundResource(R.drawable.kaoqin);
+                mHomeLayout.setBackgroundResource(R.drawable.shouye);
                 mChangePathLayout.setBackgroundResource(R.drawable.xianluc);
                 mAffairLayout.setBackgroundResource(R.drawable.shijian);
-                mOptionLayout.setBackgroundResource(R.drawable.dvr);
+                mDvrLayout.setBackgroundResource(R.drawable.dvr);
                 mTalkLayout.setBackgroundResource(R.drawable.hanhua);
-                //显示Homefragment
+                hideFragment(mLoginFragment,fragmentTransaction);
                 hideFragment(mHomeFragment,fragmentTransaction);
                 hideFragment(mAffairFragment,fragmentTransaction);
-                hideFragment(mOptionFragment,fragmentTransaction);
+                hideFragment(mDVRFragment,fragmentTransaction);
                 hideFragment(mTalkFragment, fragmentTransaction);
                 if (mChangePathFragment == null){
                     mChangePathFragment = new ChangePathFragment();
@@ -166,15 +247,16 @@ public class MainActivity extends BaseActivity implements OnClickListener {
                 break;
 
             case R.id.affair_layout_view:
-                mHomeLayout.setBackgroundResource(R.drawable.kaoqin);
+                mHomeLayout.setBackgroundResource(R.drawable.shouye);
                 mChangePathLayout.setBackgroundResource(R.drawable.xianlu);
                 mAffairLayout.setBackgroundResource(R.drawable.shijianc);
-                mOptionLayout.setBackgroundResource(R.drawable.dvr);
+                mDvrLayout.setBackgroundResource(R.drawable.dvr);
                 mTalkLayout.setBackgroundResource(R.drawable.hanhua);
-                //显示Homefragment
+                //显示AffairFragment
+                hideFragment(mLoginFragment,fragmentTransaction);
                 hideFragment(mChangePathFragment,fragmentTransaction);
                 hideFragment(mHomeFragment,fragmentTransaction);
-                hideFragment(mOptionFragment,fragmentTransaction);
+                hideFragment(mDVRFragment,fragmentTransaction);
                 hideFragment(mTalkFragment, fragmentTransaction);
                 if (mAffairFragment == null){
                     mAffairFragment = new AffairFragment();
@@ -185,34 +267,34 @@ public class MainActivity extends BaseActivity implements OnClickListener {
                 break;
 
             case R.id.dvr_layout_view:
-                mHomeLayout.setBackgroundResource(R.drawable.kaoqin);
+                mHomeLayout.setBackgroundResource(R.drawable.shouye);
                 mChangePathLayout.setBackgroundResource(R.drawable.xianlu);
                 mAffairLayout.setBackgroundResource(R.drawable.shijian);
-                mOptionLayout.setBackgroundResource(R.drawable.dvrc);
+                mDvrLayout.setBackgroundResource(R.drawable.dvrc);
                 mTalkLayout.setBackgroundResource(R.drawable.hanhua);
-                //显示Homefragment
+                hideFragment(mLoginFragment,fragmentTransaction);
                 hideFragment(mChangePathFragment,fragmentTransaction);
                 hideFragment(mHomeFragment,fragmentTransaction);
                 hideFragment(mAffairFragment,fragmentTransaction);
                 hideFragment(mTalkFragment, fragmentTransaction);
-                if (mOptionFragment == null){
-                    mOptionFragment = new OptionFragment();
-                    fragmentTransaction.add(R.id.fragment_content,mOptionFragment);
+                if (mDVRFragment == null){
+                    mDVRFragment = new DVRFragment();
+                    fragmentTransaction.add(R.id.fragment_content, mDVRFragment);
                 } else {
-                    fragmentTransaction.show(mOptionFragment);
+                    fragmentTransaction.show(mDVRFragment);
                 }
                 break;
             case R.id.talk_layout_view:
-                mHomeLayout.setBackgroundResource(R.drawable.kaoqin);
+                mHomeLayout.setBackgroundResource(R.drawable.shouye);
                 mChangePathLayout.setBackgroundResource(R.drawable.xianlu);
                 mAffairLayout.setBackgroundResource(R.drawable.shijian);
-                mOptionLayout.setBackgroundResource(R.drawable.dvr);
+                mDvrLayout.setBackgroundResource(R.drawable.dvr);
                 mTalkLayout.setBackgroundResource(R.drawable.hanhuac);
-                //显示Homefragment
+                hideFragment(mLoginFragment,fragmentTransaction);
                 hideFragment(mChangePathFragment,fragmentTransaction);
                 hideFragment(mHomeFragment,fragmentTransaction);
                 hideFragment(mAffairFragment,fragmentTransaction);
-                hideFragment(mOptionFragment,fragmentTransaction);
+                hideFragment(mDVRFragment,fragmentTransaction);
                 if (mTalkFragment == null){
                     mTalkFragment = new TalkFragment();
                     fragmentTransaction.add(R.id.fragment_content,mTalkFragment);
@@ -227,86 +309,147 @@ public class MainActivity extends BaseActivity implements OnClickListener {
         // 不要忘记提交
         fragmentTransaction.commit();
 }
-    @TargetApi(23)
-    private void getPersimmions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            ArrayList<String> permissions = new ArrayList<String>();
-            /***
-             * 定位权限为必须权限，用户如果禁止，则每次进入都会申请
-             */
-            // 定位精确位置
-            if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-                permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
-            }
-            if(checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-                permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-            }
-			/*
-			 * 读写权限和电话状态权限非必要权限(建议授予)只会申请一次，用户同意或者禁止，只会弹一次
-			 */
-            // 读写权限
-            if (addPermission(permissions, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                permissionInfo += "Manifest.permission.WRITE_EXTERNAL_STORAGE Deny \n";
-            }
-            // 读取电话状态权限
-            if (addPermission(permissions, Manifest.permission.READ_PHONE_STATE)) {
-                permissionInfo += "Manifest.permission.READ_PHONE_STATE Deny \n";
-            }
-
-            if (permissions.size() > 0) {
-                requestPermissions(permissions.toArray(new String[permissions.size()]), SDK_PERMISSION_REQUEST);
-            }
-        }
-    }
-    @TargetApi(23)
-    private boolean addPermission(ArrayList<String> permissionsList, String permission) {
-        if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) { // 如果应用没有获得对应权限,则添加到列表中,准备批量申请
-            if (shouldShowRequestPermissionRationale(permission)){
-                return true;
-            }else{
-                permissionsList.add(permission);
-                return false;
-            }
-
-        }else{
-            return true;
-        }
-    }
-
-    @TargetApi(23)
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        // TODO Auto-generated method stub
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-    }
-
-    /**
-     * 网络状态广播
-     */
-    class NetworkChangeReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(context.CONNECTIVITY_SERVICE);
-            NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
-            if (networkInfo != null && networkInfo.isAvailable()) {
-                /*BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inSampleSize = 5;//图片宽高都为原来的二分之一，即图片为原来的四分之一
-                Bitmap bitmap = BitmapFactory.decodeResource(getResources(),R.drawable.wifi, options);
-                wifiImage.setImageBitmap(bitmap);*/
-                //wifiImage.setImageResource(R.drawable.wifi);
-                mTopbar.setWifiButton(true);
-            } else {
-                //wifiImage.setImageResource(R.drawable.nowifi);
-                mTopbar.setWifiButton(false);
-            }
-        }
-    }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        //unregisterReceiver(mNetworkChangeReceiver);
     }
+
+    public void toLoginFragment() {
+        fragmentTransaction = fm.beginTransaction();
+        mHomeLayout.setBackgroundResource(R.drawable.shouye);
+        mChangePathLayout.setBackgroundResource(R.drawable.xianlu);
+        mAffairLayout.setBackgroundResource(R.drawable.shijian);
+        mDvrLayout.setBackgroundResource(R.drawable.dvr);
+        mTalkLayout.setBackgroundResource(R.drawable.hanhua);
+        //显示Homefragment
+        hideFragment(mChangePathFragment,fragmentTransaction);
+        hideFragment(mAffairFragment,fragmentTransaction);
+        hideFragment(mDVRFragment,fragmentTransaction);
+        hideFragment(mTalkFragment, fragmentTransaction);
+        if (mLoginFragment == null){
+            mLoginFragment = new LoginFragment();
+            fragmentTransaction.add(R.id.fragment_content,mLoginFragment);
+        } else {
+            fragmentTransaction.show(mLoginFragment);
+        }
+        fragmentTransaction.commit();
+    }
+
+    // 注册广播
+    private void registerReceiver() {
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BackService.HEART_BEAT_ACTION);
+        intentFilter.addAction(BackService.MESSAGE_ACTION);
+        intentFilter.addAction(BackService.RIGSTER_BEAT_ACTION);
+        intentFilter.addAction(BackService.CHECK_BEAT_ACTION);
+        intentFilter.addAction(BackService.LOCATION_UPLOAD_ACTION);
+        registerReceiver(mReceiver, intentFilter);
+    }
+
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            // 消息广播
+            if (action.equals(BackService.MESSAGE_ACTION)) {
+                String stringExtra = intent.getStringExtra("message");
+                Log.e(TAG,stringExtra);
+            } else if (action.equals(BackService.HEART_BEAT_ACTION)) {// 心跳广播
+                //等待添加UI更新
+
+            }
+            else if (action.equals(BackService.RIGSTER_BEAT_ACTION)) {// 注册广播
+                switch (intent.getIntExtra("result",1)) {
+                    case 0:
+                        //Log.e(TAG,"注册成功");
+                        //等待添加UI更新
+                        break;
+                    case 1:
+                        //Log.e(TAG,"注册失败");
+                        //等待添加UI更新
+                        break;
+                }
+
+            }
+            else if (action.equals(BackService.CHECK_BEAT_ACTION)) { //鉴权广播
+                isChecked = true;
+            }
+            else if (action.equals(BackService.LOCATION_UPLOAD_ACTION)) {
+                //等待添加UI
+            }
+        }
+    };
+
+    private ServiceConnection conn = new ServiceConnection() {
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            // 未连接为空
+            iBackService = null;
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // 已连接
+            iBackService = IBackService.Stub.asInterface(service);
+        }
+    };
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // 注销广播 最好在onPause上注销
+        unregisterReceiver(mReceiver);
+        // 注销服务
+        unbindService(conn);
+    }
+
+    @Override
+    public void process(LocationInfoUploadMsg locationInfo) {
+        if (isChecked) {
+            count++;
+            if (count == 8) {
+                mLocationInfoUploadMsg = locationInfo;
+
+                try {
+                    Log.i(TAG, "是否为空：" + iBackService);
+                    if (iBackService == null) {
+                        Toast.makeText(getApplicationContext(),
+                                "没有连接，可能是服务器已断开", Toast.LENGTH_SHORT).show();
+                    } else {
+                        byte[] locationMsg = mMsgEncoder.encode4LocationInfoUploadMsg(mLocationInfoUploadMsg, flow);
+                        String message = Utils.bytes2HexString(locationMsg);
+                        boolean isSend = iBackService.sendMessage(locationMsg);
+                        if (isSend) {
+                            Log.e(TAG, "locationMsg:" + message);
+                            flow++;
+                        }
+                        else {
+                            isChecked = false;
+                        }
+                        Toast.makeText(MainActivity.this,
+                                isSend ? "发送位置信息" : "失败", Toast.LENGTH_SHORT)
+                                .show();
+                        //et.setText("");
+                    }
+
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                count = 0;
+            }
+
+        }
+    }
+    @Override
+    public Resources getResources() {
+        Resources res = super.getResources();
+        Configuration config=new Configuration();
+        config.setToDefaults();
+        res.updateConfiguration(config,res.getDisplayMetrics() );
+        return res;
+    }
+
 }

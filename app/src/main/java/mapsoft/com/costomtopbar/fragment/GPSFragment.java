@@ -5,32 +5,49 @@ import android.os.Bundle;
 
 import android.secondbook.com.buttonfragment.R;
 import android.support.v4.app.Fragment;
+import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.RadioGroup;
 import android.widget.TextView;
-import com.baidu.location.BDAbstractLocationListener;
-import com.baidu.location.BDLocation;
-import com.baidu.location.Poi;
 
-import mapsoft.com.costomtopbar.baidu.LocationApplication;
-import mapsoft.com.costomtopbar.baidu.service.LocationService;
+import com.amap.api.location.AMapLocation;
+import com.amap.api.location.AMapLocationClient;
+import com.amap.api.location.AMapLocationClientOption;
+import com.amap.api.location.AMapLocationListener;
+import com.amap.api.location.AMapLocationQualityReport;
+
+import mapsoft.com.costomtopbar.application.MapsoftApplication;
+
 
 
 /**
  * A simple {@link } subclass.
  */
-public class GPSFragment extends Fragment {
+public class GPSFragment extends Fragment implements RadioGroup.OnCheckedChangeListener, View.OnClickListener{
+
     public static String TABLAYOUT_FRAGMENT = "tab_fragment";
 
+    private RadioGroup rgLocationMode;
+    private EditText etInterval;
+    private EditText etHttpTimeout;
+    private CheckBox cbOnceLocation;
+    private CheckBox cbAddress;
+    private CheckBox cbGpsFirst;
+    private CheckBox cbCacheAble;
+    private CheckBox cbOnceLastest;
+    private CheckBox cbSensorAble;
+    private TextView tvResult;
+    private Button btLocation;
 
+    private AMapLocationClient locationClient = null;
+    private AMapLocationClientOption locationOption = null;
 
-
-    private LocationService locationService;
-    private TextView LocationResult;
-    private Button startLocation;
 
 
     @Override
@@ -38,17 +55,16 @@ public class GPSFragment extends Fragment {
         // TODO Auto-generated method stub
         super.onCreate(savedInstanceState);
 
-
-
     }
 
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_gps_layout, container, false);
-        LocationResult = (TextView) view.findViewById(R.id.textView1);
-        LocationResult.setMovementMethod(ScrollingMovementMethod.getInstance());
-        startLocation = (Button) view.findViewById(R.id.addfence);
+        initView(view);
+
+        //初始化定位
+        initLocation();
         return view;
     }
 
@@ -60,170 +76,301 @@ public class GPSFragment extends Fragment {
         return fragment;
     }
 
+
+
+
+    //初始化控件
+    private void initView(View v){
+        rgLocationMode = (RadioGroup) v.findViewById(R.id.rg_locationMode);
+
+        etInterval = (EditText) v.findViewById(R.id.et_interval);
+        etHttpTimeout = (EditText) v.findViewById(R.id.et_httpTimeout);
+
+        cbOnceLocation = (CheckBox)v.findViewById(R.id.cb_onceLocation);
+        cbGpsFirst = (CheckBox) v.findViewById(R.id.cb_gpsFirst);
+        cbAddress = (CheckBox) v.findViewById(R.id.cb_needAddress);
+        cbCacheAble = (CheckBox) v.findViewById(R.id.cb_cacheAble);
+        cbOnceLastest = (CheckBox) v.findViewById(R.id.cb_onceLastest);
+        cbSensorAble = (CheckBox)v.findViewById(R.id.cb_sensorAble);
+
+        tvResult = (TextView) v.findViewById(R.id.tv_result);
+        btLocation = (Button) v.findViewById(R.id.bt_location);
+
+        rgLocationMode.setOnCheckedChangeListener(this);
+        btLocation.setOnClickListener(this);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        destroyLocation();
+    }
+
+    @Override
+    public void onCheckedChanged(RadioGroup group, int checkedId) {
+        if (null == locationOption) {
+            locationOption = new AMapLocationClientOption();
+        }
+        switch (checkedId) {
+            case R.id.rb_batterySaving :
+                locationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Battery_Saving);
+                break;
+            case R.id.rb_deviceSensors :
+                locationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Device_Sensors);
+                break;
+            case R.id.rb_hightAccuracy :
+                locationOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);
+                break;
+            default :
+                break;
+        }
+
+    }
+
     /**
-     * 显示请求字符串
-     *
-     * @param str
+     * 设置控件的可用状态
      */
-    public void logMsg(String str) {
-        final String s = str;
-        try {
-            if (LocationResult != null){
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        LocationResult.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                LocationResult.setText(s);
-                            }
-                        });
-
-                    }
-                }).start();
-            }
-            //LocationResult.setText(str);
-        } catch (Exception e) {
-            e.printStackTrace();
+    private void setViewEnable(boolean isEnable) {
+        for(int i=0; i<rgLocationMode.getChildCount(); i++){
+            rgLocationMode.getChildAt(i).setEnabled(isEnable);
         }
-    }
-
-
-    /***
-     * Stop location service
-     */
-    @Override
-    public void onStop() {
-        // TODO Auto-generated method stub
-        locationService.unregisterListener(mListener); //注销掉监听
-        locationService.stop(); //停止定位服务
-        super.onStop();
+        etInterval.setEnabled(isEnable);
+        etHttpTimeout.setEnabled(isEnable);
+        cbOnceLocation.setEnabled(isEnable);
+        cbGpsFirst.setEnabled(isEnable);
+        cbAddress.setEnabled(isEnable);
+        cbCacheAble.setEnabled(isEnable);
+        cbOnceLastest.setEnabled(isEnable);
+        cbSensorAble.setEnabled(isEnable);
     }
 
     @Override
-    public void onStart() {
-        // TODO Auto-generated method stub
-        super.onStart();
-        // -----------location config ------------
-        locationService = ((LocationApplication) getActivity().getApplication()).locationService;
-        //获取locationservice实例，建议应用中只初始化1个location实例，然后使用，可以参考其他示例的activity，都是通过此种方式获取locationservice实例的
-        locationService.registerListener(mListener);
-        //注册监听
-        int type = getActivity().getIntent().getIntExtra("from", 0);
-        if (type == 0) {
-            locationService.setLocationOption(locationService.getDefaultLocationClientOption());
-        } else if (type == 1) {
-            locationService.setLocationOption(locationService.getOption());
-        }
-        startLocation.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                if (startLocation.getText().toString().equals(getString(R.string.startlocation))) {
-                    locationService.start();// 定位SDK
-                    // start之后会默认发起一次定位请求，开发者无须判断isstart并主动调用request
-                    startLocation.setText(getString(R.string.stoplocation));
-                } else {
-                    locationService.stop();
-                    startLocation.setText(getString(R.string.startlocation));
-                }
+    public void onClick(View v) {
+        if (v.getId() == R.id.bt_location) {
+            if (btLocation.getText().equals(
+                    getResources().getString(R.string.startLocation))) {
+                setViewEnable(false);
+                btLocation.setText(getResources().getString(
+                        R.string.stopLocation));
+                tvResult.setText("正在定位...");
+                startLocation();
+            } else {
+                setViewEnable(true);
+                btLocation.setText(getResources().getString(
+                        R.string.startLocation));
+                stopLocation();
+                tvResult.setText("定位停止");
             }
-        });
+        }
     }
 
-
-    /*****
+    /**
+     * 初始化定位
      *
-     * 定位结果回调，重写onReceiveLocation方法，可以直接拷贝如下代码到自己工程中修改
+     * @since 2.8.0
+     * @author hongming.wang
      *
      */
-    private BDAbstractLocationListener mListener = new BDAbstractLocationListener() {
+    private void initLocation(){
+        //初始化client
+        locationClient = new AMapLocationClient(getActivity().getApplicationContext());
+        locationOption = getDefaultOption();
+        //设置定位参数
+        locationClient.setLocationOption(locationOption);
+        // 设置定位监听
+        locationClient.setLocationListener(locationListener);
+    }
 
+    /**
+     * 默认的定位参数
+     * @since 2.8.0
+     * @author hongming.wang
+     *
+     */
+    private AMapLocationClientOption getDefaultOption(){
+        AMapLocationClientOption mOption = new AMapLocationClientOption();
+        mOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy);//可选，设置定位模式，可选的模式有高精度、仅设备、仅网络。默认为高精度模式
+        mOption.setGpsFirst(false);//可选，设置是否gps优先，只在高精度模式下有效。默认关闭
+        mOption.setHttpTimeOut(30000);//可选，设置网络请求超时时间。默认为30秒。在仅设备模式下无效
+        mOption.setInterval(2000);//可选，设置定位间隔。默认为2秒
+        mOption.setNeedAddress(true);//可选，设置是否返回逆地理地址信息。默认是true
+        mOption.setOnceLocation(false);//可选，设置是否单次定位。默认是false
+        mOption.setOnceLocationLatest(false);//可选，设置是否等待wifi刷新，默认为false.如果设置为true,会自动变为单次定位，持续定位时不要使用
+        AMapLocationClientOption.setLocationProtocol(AMapLocationClientOption.AMapLocationProtocol.HTTP);//可选， 设置网络请求的协议。可选HTTP或者HTTPS。默认为HTTP
+        mOption.setSensorEnable(false);//可选，设置是否使用传感器。默认是false
+        mOption.setWifiScan(true); //可选，设置是否开启wifi扫描。默认为true，如果设置为false会同时停止主动刷新，停止以后完全依赖于系统刷新，定位位置可能存在误差
+        mOption.setLocationCacheEnable(true); //可选，设置是否使用缓存定位，默认为true
+        return mOption;
+    }
+
+    /**
+     * 定位监听
+     */
+    AMapLocationListener locationListener = new AMapLocationListener() {
         @Override
-        public void onReceiveLocation(BDLocation location) {
-            // TODO Auto-generated method stub
-            if (null != location && location.getLocType() != BDLocation.TypeServerError) {
-                StringBuffer sb = new StringBuffer(256);
-                sb.append("time : ");
-                /**
-                 * 时间也可以使用systemClock.elapsedRealtime()方法 获取的是自从开机以来，每次回调的时间；
-                 * location.getTime() 是指服务端出本次结果的时间，如果位置不发生变化，则时间不变
-                 */
-                sb.append(location.getTime());
-                sb.append("\nlocType : ");// 定位类型
-                sb.append(location.getLocType());
-                sb.append("\nlocType description : ");// *****对应的定位类型说明*****
-                sb.append(location.getLocTypeDescription());
-                sb.append("\nlatitude : ");// 纬度
-                sb.append(location.getLatitude());
-                sb.append("\nlontitude : ");// 经度
-                sb.append(location.getLongitude());
-                sb.append("\nradius : ");// 半径
-                sb.append(location.getRadius());
-                sb.append("\nCountryCode : ");// 国家码
-                sb.append(location.getCountryCode());
-                sb.append("\nCountry : ");// 国家名称
-                sb.append(location.getCountry());
-                sb.append("\ncitycode : ");// 城市编码
-                sb.append(location.getCityCode());
-                sb.append("\ncity : ");// 城市
-                sb.append(location.getCity());
-                sb.append("\nDistrict : ");// 区
-                sb.append(location.getDistrict());
-                sb.append("\nStreet : ");// 街道
-                sb.append(location.getStreet());
-                sb.append("\naddr : ");// 地址信息
-                sb.append(location.getAddrStr());
-                sb.append("\nUserIndoorState: ");// *****返回用户室内外判断结果*****
-                sb.append(location.getUserIndoorState());
-                sb.append("\nDirection(not all devices have value): ");
-                sb.append(location.getDirection());// 方向
-                sb.append("\nlocationdescribe: ");
-                sb.append(location.getLocationDescribe());// 位置语义化信息
-                sb.append("\nPoi: ");// POI信息
-                if (location.getPoiList() != null && !location.getPoiList().isEmpty()) {
-                    for (int i = 0; i < location.getPoiList().size(); i++) {
-                        Poi poi = (Poi) location.getPoiList().get(i);
-                        sb.append(poi.getName() + ";");
-                    }
+        public void onLocationChanged(AMapLocation location) {
+            if (null != location) {
+
+                StringBuffer sb = new StringBuffer();
+                //errCode等于0代表定位成功，其他的为定位失败，具体的可以参照官网定位错误码说明
+                if(location.getErrorCode() == 0){
+                    sb.append("定位成功" + "\n");
+                    sb.append("定位类型: " + location.getLocationType() + "\n");
+                    sb.append("经    度    : " + location.getLongitude() + "\n");
+                    sb.append("纬    度    : " + location.getLatitude() + "\n");
+                    sb.append("精    度    : " + location.getAccuracy() + "米" + "\n");
+                    sb.append("提供者    : " + location.getProvider() + "\n");
+
+                    sb.append("速    度    : " + location.getSpeed() + "米/秒" + "\n");
+                    sb.append("角    度    : " + location.getBearing() + "\n");
+                    // 获取当前提供定位服务的卫星个数
+                    sb.append("星    数    : " + location.getSatellites() + "\n");
+                    sb.append("国    家    : " + location.getCountry() + "\n");
+                    sb.append("省            : " + location.getProvince() + "\n");
+                    sb.append("市            : " + location.getCity() + "\n");
+                    sb.append("城市编码 : " + location.getCityCode() + "\n");
+                    sb.append("区            : " + location.getDistrict() + "\n");
+                    sb.append("区域 码   : " + location.getAdCode() + "\n");
+                    sb.append("地    址    : " + location.getAddress() + "\n");
+                    sb.append("兴趣点    : " + location.getPoiName() + "\n");
+                    //定位完成的时间
+                    sb.append("定位时间: " + AMapUtils.formatUTC(location.getTime(), "yyyy-MM-dd HH:mm:ss") + "\n");
+                } else {
+                    //定位失败
+                    sb.append("定位失败" + "\n");
+                    sb.append("错误码:" + location.getErrorCode() + "\n");
+                    sb.append("错误信息:" + location.getErrorInfo() + "\n");
+                    sb.append("错误描述:" + location.getLocationDetail() + "\n");
                 }
-                if (location.getLocType() == BDLocation.TypeGpsLocation) {// GPS定位结果
-                    sb.append("\nspeed : ");
-                    sb.append(location.getSpeed());// 速度 单位：km/h
-                    sb.append("\nsatellite : ");
-                    sb.append(location.getSatelliteNumber());// 卫星数目
-                    sb.append("\nheight : ");
-                    sb.append(location.getAltitude());// 海拔高度 单位：米
-                    sb.append("\ngps status : ");
-                    sb.append(location.getGpsAccuracyStatus());// *****gps质量判断*****
-                    sb.append("\ndescribe : ");
-                    sb.append("gps定位成功");
-                } else if (location.getLocType() == BDLocation.TypeNetWorkLocation) {// 网络定位结果
-                    // 运营商信息
-                    if (location.hasAltitude()) {// *****如果有海拔高度*****
-                        sb.append("\nheight : ");
-                        sb.append(location.getAltitude());// 单位：米
-                    }
-                    sb.append("\noperationers : ");// 运营商信息
-                    sb.append(location.getOperators());
-                    sb.append("\ndescribe : ");
-                    sb.append("网络定位成功");
-                } else if (location.getLocType() == BDLocation.TypeOffLineLocation) {// 离线定位结果
-                    sb.append("\ndescribe : ");
-                    sb.append("离线定位成功，离线定位结果也是有效的");
-                } else if (location.getLocType() == BDLocation.TypeServerError) {
-                    sb.append("\ndescribe : ");
-                    sb.append("服务端网络定位失败，可以反馈IMEI号和大体定位时间到loc-bugs@baidu.com，会有人追查原因");
-                } else if (location.getLocType() == BDLocation.TypeNetWorkException) {
-                    sb.append("\ndescribe : ");
-                    sb.append("网络不同导致定位失败，请检查网络是否通畅");
-                } else if (location.getLocType() == BDLocation.TypeCriteriaException) {
-                    sb.append("\ndescribe : ");
-                    sb.append("无法获取有效定位依据导致定位失败，一般是由于手机的原因，处于飞行模式下一般会造成这种结果，可以试着重启手机");
-                }
-                logMsg(sb.toString());
+                sb.append("***定位质量报告***").append("\n");
+                sb.append("* WIFI开关：").append(location.getLocationQualityReport().isWifiAble() ? "开启":"关闭").append("\n");
+                sb.append("* GPS状态：").append(getGPSStatusString(location.getLocationQualityReport().getGPSStatus())).append("\n");
+                sb.append("* GPS星数：").append(location.getLocationQualityReport().getGPSSatellites()).append("\n");
+                sb.append("****************").append("\n");
+                //定位之后的回调时间
+                sb.append("回调时间: " + AMapUtils.formatUTC(System.currentTimeMillis(), "yyyy-MM-dd HH:mm:ss") + "\n");
+
+                //解析定位结果，
+                String result = sb.toString();
+                tvResult.setText(result);
+            } else {
+                tvResult.setText("定位失败，loc is null");
+            }
+        }
+    };
+
+
+    /**
+     * 获取GPS状态的字符串
+     * @param statusCode GPS状态码
+     * @return
+     */
+    private String getGPSStatusString(int statusCode){
+        String str = "";
+        switch (statusCode){
+            case AMapLocationQualityReport.GPS_STATUS_OK:
+                str = "GPS状态正常";
+                break;
+            case AMapLocationQualityReport.GPS_STATUS_NOGPSPROVIDER:
+                str = "手机中没有GPS Provider，无法进行GPS定位";
+                break;
+            case AMapLocationQualityReport.GPS_STATUS_OFF:
+                str = "GPS关闭，建议开启GPS，提高定位质量";
+                break;
+            case AMapLocationQualityReport.GPS_STATUS_MODE_SAVING:
+                str = "选择的定位模式中不包含GPS定位，建议选择包含GPS定位的模式，提高定位质量";
+                break;
+            case AMapLocationQualityReport.GPS_STATUS_NOGPSPERMISSION:
+                str = "没有GPS定位权限，建议开启gps定位权限";
+                break;
+        }
+        return str;
+    }
+    // 根据控件的选择，重新设置定位参数
+    private void resetOption() {
+        // 设置是否需要显示地址信息
+        locationOption.setNeedAddress(cbAddress.isChecked());
+        /**
+         * 设置是否优先返回GPS定位结果，如果30秒内GPS没有返回定位结果则进行网络定位
+         * 注意：只有在高精度模式下的单次定位有效，其他方式无效
+         */
+        locationOption.setGpsFirst(cbGpsFirst.isChecked());
+        // 设置是否开启缓存
+        locationOption.setLocationCacheEnable(cbCacheAble.isChecked());
+        // 设置是否单次定位
+        locationOption.setOnceLocation(cbOnceLocation.isChecked());
+        //设置是否等待设备wifi刷新，如果设置为true,会自动变为单次定位，持续定位时不要使用
+        locationOption.setOnceLocationLatest(cbOnceLastest.isChecked());
+        //设置是否使用传感器
+        locationOption.setSensorEnable(cbSensorAble.isChecked());
+        //设置是否开启wifi扫描，如果设置为false时同时会停止主动刷新，停止以后完全依赖于系统刷新，定位位置可能存在误差
+        String strInterval = etInterval.getText().toString();
+        if (!TextUtils.isEmpty(strInterval)) {
+            try{
+                // 设置发送定位请求的时间间隔,最小值为1000，如果小于1000，按照1000算
+                locationOption.setInterval(Long.valueOf(strInterval));
+            }catch(Throwable e){
+                e.printStackTrace();
             }
         }
 
-    };
+        String strTimeout = etHttpTimeout.getText().toString();
+        if(!TextUtils.isEmpty(strTimeout)){
+            try{
+                // 设置网络请求超时时间
+                locationOption.setHttpTimeOut(Long.valueOf(strTimeout));
+            }catch(Throwable e){
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * 开始定位
+     *
+     * @since 2.8.0
+     * @author hongming.wang
+     *
+     */
+    private void startLocation(){
+        //根据控件的选择，重新设置定位参数
+        resetOption();
+        // 设置定位参数
+        locationClient.setLocationOption(locationOption);
+        // 启动定位
+        locationClient.startLocation();
+    }
+
+    /**
+     * 停止定位
+     *
+     * @since 2.8.0
+     * @author hongming.wang
+     *
+     */
+    private void stopLocation(){
+        // 停止定位
+        locationClient.stopLocation();
+    }
+
+    /**
+     * 销毁定位
+     *
+     * @since 2.8.0
+     * @author hongming.wang
+     *
+     */
+    private void destroyLocation(){
+        if (null != locationClient) {
+            /**
+             * 如果AMapLocationClient是在当前Activity实例化的，
+             * 在Activity的onDestroy中一定要执行AMapLocationClient的onDestroy
+             */
+            locationClient.onDestroy();
+            locationClient = null;
+            locationOption = null;
+        }
+    }
+
+
 }

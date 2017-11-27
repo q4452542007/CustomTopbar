@@ -8,10 +8,7 @@
         <attr name="leftText" format="string"/>
         <attr name="leftBackground" format="reference|color"/>
         <attr name="leftTextColor" format="color"/>
-
         <attr name="gpsBackground" format="reference|color"/>
-
-
 
         <attr name="rightText" format="string"/>
         <attr name="rightBackground" format="reference|color"/>

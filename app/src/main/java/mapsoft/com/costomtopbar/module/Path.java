@@ -1,4 +1,5 @@
 package mapsoft.com.costomtopbar.module;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,44 +8,36 @@ import java.util.List;
  * Created by Administrator on 2017/9/6.
  */
 
-public class Path implements Serializable{
-    private String num=null;
-    private Station mStation;
-    private List<Station> upStations;
-    private List<Station> downStations;
-    public Path() {
-        upStations = new ArrayList<>();
-        downStations = new ArrayList<>();
+public class Path {
+
+    private int pathNum;
+
+    private String direction;
+
+    private ArrayList<Station> stations;
+
+    public int getPathNum() {
+        return pathNum;
     }
 
-    public String getNum() {
-        return num;
+    public void setPathNum(int pathNum) {
+        this.pathNum = pathNum;
     }
 
-    public void setNum(String num) {
-        this.num = num;
+    public String getDirection() {
+        return direction;
     }
 
-    public Station getStation(String name) {
-        return new Station(name);
+    public void setDirection(String direction) {
+        this.direction = direction;
     }
 
-
-    public void addUpStation(Station s) {
-        upStations.add(s);
+    public ArrayList<Station> getStations() {
+        return stations;
     }
 
-    public void addDownStation(Station s) {
-        downStations.add(s);
+    public void setStations(ArrayList<Station> stations) {
+        this.stations = stations;
     }
-
-    public List<Station> getUpStations() {
-        return upStations;
-    }
-
-    public List<Station> getDownStations() {
-        return downStations;
-    }
-
 }
 

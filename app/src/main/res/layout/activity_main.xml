@@ -9,12 +9,11 @@
 
     <mapsoft.com.costomtopbar.view.Topbar
         android:id="@+id/topbar"
-        android:layout_width="wrap_content"
-        android:layout_height="80dp"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
         android:background="@drawable/top"
-        custom:rightBackground="@drawable/home"
-        custom:leftBackground="@drawable/nowifi"
-        custom:gpsBackground="@drawable/nogps"
+        custom:titleTextSize="30sp"
+        custom:titleTextColor="@color/white"
         >
 
     </mapsoft.com.costomtopbar.view.Topbar>
@@ -24,7 +23,9 @@
         android:id="@+id/fragment_content"
         android:layout_below="@+id/topbar"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        >
+
     </FrameLayout>
 
     <LinearLayout

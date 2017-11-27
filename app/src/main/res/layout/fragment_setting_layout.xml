@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical" >
+
+
+    <RelativeLayout
+        android:id="@+id/ip_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="20dp">
+
+        <TextView
+            android:id="@+id/text_ip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="IP: "
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:layout_toLeftOf="@+id/edit_ip"
+            />
+        <EditText
+            android:id="@+id/edit_ip"
+            android:layout_width="400dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/edit_nor_down"
+            android:layout_centerHorizontal="true"
+            />
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/port_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/ip_layout"
+        android:layout_margin="20dp">
+
+        <TextView
+            android:id="@+id/text_port"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PORT: "
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:layout_toLeftOf="@+id/edit_port"
+            />
+        <EditText
+            android:id="@+id/edit_port"
+            android:layout_width="400dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/edit_nor_down"
+            android:layout_centerHorizontal="true"
+            />
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="20dp"
+        android:layout_below="@+id/port_layout">
+
+        <TextView
+            android:id="@+id/text_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ID: "
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:layout_toLeftOf="@+id/edit_id"
+            />
+        <EditText
+            android:id="@+id/edit_id"
+            android:layout_width="400dp"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:background="@drawable/edit_nor_down"
+            />
+    </RelativeLayout>
+
+    <Button
+        android:id="@+id/save_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_margin="40dp"
+        android:text="保存"
+        android:textSize="40dp"/>
+</RelativeLayout>

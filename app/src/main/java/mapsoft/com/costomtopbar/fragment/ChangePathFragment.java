@@ -1,19 +1,23 @@
 package mapsoft.com.costomtopbar.fragment;
 
-
-
-import android.net.Uri;
+import android.app.AlertDialog;
 import android.os.Bundle;
-
-
+import android.os.Environment;
 import android.secondbook.com.buttonfragment.R;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.Spinner;
+import android.widget.TextView;
+import java.io.File;
+import java.util.ArrayList;
+import static android.view.View.inflate;
 
 /**
  * Created by WangChang on 2016/5/15.
@@ -24,83 +28,89 @@ public class ChangePathFragment extends BaseFragment {
 
     private static final String TAG = "ChangePathFragment";
 
+    private AlertDialog dlgSpecItem;
+    private View specItemView;
 
-    WebView mWebView1,mWebView2;
+    private Spinner mSpinner;
+    private ArrayList<String> gradeList;
 
+    private WebView mWebView;
+
+    private Button switchUpPath;
+    private Button switchDownPath;
     @Override
     public void onCreate( Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setRetainInstance(true);
+        setRetainInstance(true);  //指示系统保留当前的fragment实例,即使是在Activity被重新创建的时候
+        //打开指定目录，显示项目说明书列表，供用户选择
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
         View view = inflater.inflate(R.layout.fragment_path, container, false);
-        mWebView1 = (WebView) view.findViewById(R.id.webview1);
-        mWebView1.setBackgroundColor(0);
-        mWebView2= (WebView) view.findViewById(R.id.webview2);
-        mWebView2.setBackgroundColor(0); // 设置背景色
-        //mWebView2.getBackground().setAlpha(0); // 设置填充透明度 范围：0-255
-        WebSettings webSettings = mWebView1.getSettings();
-        webSettings.setSupportZoom(true);
+        gradeList = new ArrayList<>();
+        mWebView = (WebView) view.findViewById(R.id.web_view);
+        mWebView.setBackgroundColor(0);
+        mSpinner = (Spinner) view.findViewById(R.id.spinner);
+        String PATH = Environment.getExternalStorageDirectory() + "/";
+        File specItemDir = new File(PATH + "path" );
+        final File[] files = specItemDir.listFiles();
+        gradeList.add("请选择线路");
+        int i =1;
+        for (File file : files) {
+            if (file.getName().length() > 3) {
+                gradeList.add(file.getName().substring(0, file.getName().length() - 5)+"路");
+                i++;
+            }
+        }
+//参数包括( 句柄， 下拉列表显示方式layout（这里采用系统自带的), 下拉列表中的文本id值， 待显示的字符串数组 )；
+       // ArrayAdapter<String> adapter1 = new ArrayAdapter<String>(getActivity(), R.layout.spinner, R.id.textView3333, s1);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(),
+                R.layout.spinner, gradeList) {
+            @Override
+            public View getDropDownView(int position, View convertView,
+                                        ViewGroup parent) {
+                View view = inflate(getContext(), R.layout.spinner_item_layout,
+                        null);
+                TextView label = (TextView) view
+                        .findViewById(R.id.spinner_item_label);
+                ImageView check = (ImageView) view
+                        .findViewById(R.id.spinner_item_checked_image);
+                if (position == 0){
+                    check.setVisibility(View.GONE);
+                }
+                label.setText(gradeList.get(position));
 
-        // 设置与Js交互的权限
-        webSettings.setJavaScriptEnabled(true);
-        // 设置允许JS弹窗
-        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+                if (mSpinner.getSelectedItemPosition() == position) {
+                    view.setBackgroundColor(getResources().getColor(
+                            R.color.spinner_green));
+                    check.setImageResource(R.drawable.select);
+                } else {
+                    view.setBackgroundColor(getResources().getColor(
+                            R.color.spinner_light_green));
+                    check.setImageResource(R.drawable.unselect);
+                }
 
-        // 步骤1：加载JS代码
-        // 格式规定为:file:///android_asset/文件名.html
-        mWebView1.loadUrl("file:///android_asset/123.html");
-        mWebView2.loadUrl("file:///android_asset/1.html");
-        mWebView1.setWebViewClient(new WebViewClient() {
-                                      @Override
-                                      public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return view;
+            }
 
-                                          // 步骤2：根据协议的参数，判断是否是所需要的url
-                                          // 一般根据scheme（协议格式） & authority（协议名）判断（前两个参数）
-                                          //假定传入进来的 url = "js://webview?arg1=111&arg2=222"（同时也是约定好的需要拦截的）
+        };
+        adapter.setDropDownViewResource(R.layout.spinner_item_layout);
+        mSpinner.setAdapter(adapter);
+        mSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position != 0){
+                    mWebView.loadUrl("file:///sdcard/path/"+gradeList.get(position).substring(0,gradeList.get(position).length()-1)+".html");
+                }
+            }
 
-                                          Uri uri = Uri.parse(url);
-                                          // 如果url的协议 = 预先约定的 js 协议
-                                          // 就解析往下解析参数
-                                          if ( uri.getScheme().equals("js")) {
-                                              // 如果 authority  = 预先约定协议里的 webview，即代表都符合约定的协议
-                                              // 所以拦截url,下面JS开始调用Android需要的方法
-                                              if (uri.getAuthority().equals("webview")) {
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
 
-                                                  //步骤3：
-                                                  //执行JS所需要调用的逻辑
-                                                  //可以在协议上带有参数并传递到Android上
-
-                                                  System.out.println("js调用了Android的方法");
-                                                  String ss = uri.getQueryParameter("filename");
-                                                  String pathNum = uri.getQueryParameter("pathname");
-                                                  if (pathNum!=null) {
-                                                      /*HomeFragment homeFragment = HomeFragment.newInstance(pathNum);
-                                                      FragmentTransaction transaction = getActivity().getFragmentManager().beginTransaction();
-                                                      transaction.replace(R.id.fragment_content, homeFragment);
-                                                      transaction.commit();
-                                                      MainActivity parentActivity = (MainActivity ) getActivity();
-                                                      parentActivity.setBackgroundColorById(R.id.home_btn);*/
-                                                  }
-                                                  mWebView2.loadUrl("file:///android_asset/"+ss);
-                                              }
-
-                                              return true;
-                                          }
-                                          return super.shouldOverrideUrlLoading(view, url);
-                                      }
-                                  }
-        );
+            }
+        });
         return view;
-
-    }
-
-    @Override
-    public void onActivityCreated( Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
     }
 
     public static ChangePathFragment newInstance(String path) {
@@ -111,10 +121,10 @@ public class ChangePathFragment extends BaseFragment {
         fragment.setArguments(args);
         return fragment;
     }
-
     @Override
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "Destroy");
     }
+
 }

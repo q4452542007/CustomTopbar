@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bgvideo"
+    tools:context="mapsoft.com.costomtopbar.activity.MainActivity"
+    >
+    <SurfaceView
+        android:id="@+id/surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="205dp"/>
+
+    <Button
+        android:id="@+id/switchCamera"
+        android:layout_width="130dp"
+        android:layout_height="80dp"
+        android:layout_alignParentTop="true"
+        android:layout_marginLeft="35dp"
+        android:layout_marginStart="35dp"
+        android:layout_marginTop="49dp"
+        android:layout_toEndOf="@+id/checkCamera"
+        android:layout_toRightOf="@+id/checkCamera"
+        android:background="@null"
+        android:text="切换"
+        android:textColor="@color/white"
+        android:textSize="40dp"/>
+
+    <Button
+        android:id="@+id/checkCamera"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_weight="1"
+        android:text="检测"
+        android:textColor="@android:color/black"
+        android:textSize="30dp" />
+
+</RelativeLayout>

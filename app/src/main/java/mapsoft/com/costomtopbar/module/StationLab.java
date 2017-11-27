@@ -29,13 +29,13 @@ public class StationLab {
         return mPaths;
     }
 
-    public Path getPath(String pathNum) {
+    /*public Path getPath(String pathNum) {
         for (Path path : mPaths) {
             if (path.getNum().equals(pathNum)) {
                 return path;
             }
         }
         return new Path();
-    }
+    }*/
 }
 

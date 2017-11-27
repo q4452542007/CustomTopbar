@@ -1,21 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@drawable/homepagenobar"
+    android:background="@drawable/homepagenobar1"
     >
+    <Spinner
+        android:id="@+id/spinner"
+        android:layout_width="300dp"
+        android:layout_height="80dp"
+        android:layout_centerHorizontal="true"
+        android:background="@drawable/spinner_sharp"
+        >
+    </Spinner>
+
+    <Button
+        android:id="@+id/up"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toLeftOf="@id/spinner"
+        android:text="切换上行"
+        android:textSize="35sp"
+        android:layout_marginRight="80dp"/>
+
+    <Button
+        android:id="@+id/down"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/spinner"
+        android:text="切换下行"
+        android:textSize="35sp"
+        android:layout_marginLeft="80dp"/>
+
     <WebView
-        android:id="@+id/webview1"
+        android:id="@+id/web_view"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        />
-    <WebView
-        android:id="@+id/webview2"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="7"
-        />
-</LinearLayout>
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/spinner"
+        >
+    </WebView>
+</RelativeLayout>

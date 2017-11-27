@@ -18,5 +18,11 @@
 
     <color name="tab_tv_nor">#797979</color>
     <color name="tab_tv_sel">#3399dd</color>
+    <color name="buttonup">#313131</color>
+    <color name="buttondown">#ff6501</color>
+    <color name="text_green">#7a933a</color>
+    <color name="spinner_light_green">#f6fce0</color>
+    <color name="spinner_green">#dfedb3</color>
+
 
 </resources>

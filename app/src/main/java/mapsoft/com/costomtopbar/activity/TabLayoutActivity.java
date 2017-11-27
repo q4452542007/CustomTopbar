@@ -15,14 +15,16 @@ import java.util.List;
 
 import mapsoft.com.costomtopbar.adapter.TabAdapter;
 import mapsoft.com.costomtopbar.fragment.GPSFragment;
+import mapsoft.com.costomtopbar.fragment.ReportStationFragment;
 import mapsoft.com.costomtopbar.fragment.SIMFragment;
+import mapsoft.com.costomtopbar.fragment.SettingFragment;
 
 public class TabLayoutActivity extends BaseActivity {
 
     private TabLayout mTabLayout;
     private ViewPager mViewPager;
     private TabAdapter mTabAdapter;
-    public static final String[] tabTitle = new String[]{"GPS自检", "SIM卡自检"};
+    public static final String[] tabTitle = new String[]{"GPS自检", "SIM卡自检", "参数设置", "自动报站"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,7 +37,6 @@ public class TabLayoutActivity extends BaseActivity {
         mTabLayout = (TabLayout) findViewById(R.id.tab);
         mViewPager = (ViewPager) findViewById(R.id.viewpager);
 
-
         List<Fragment> fragments = new ArrayList<>();
         for (int i = 0; i < tabTitle.length; i++) {
             if (i == 0 ) {
@@ -44,6 +45,13 @@ public class TabLayoutActivity extends BaseActivity {
             if (i == 1 ) {
                 fragments.add(SIMFragment.newInstance(i));
             }
+            if (i ==2 ) {
+                fragments.add(SettingFragment.newInstance(i));
+            }
+            if (i ==3 ) {
+                fragments.add(ReportStationFragment.newInstance(i));
+            }
+
         }
         mTabAdapter = new TabAdapter(getSupportFragmentManager(), fragments);
         //给ViewPager设置适配器

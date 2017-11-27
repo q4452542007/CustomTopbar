@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView
+<CheckedTextView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:text="New Text"
-    android:padding="10dp"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
     android:singleLine="true"
-    android:textSize="30sp"
+    android:textSize="25sp"
+    android:padding="10dp"
     android:textColor="#f77718"
-    android:gravity="left"
-    android:background="#aa33ac"
-    android:id="@+id/textView3333" />
+    android:id="@+id/textView3333"
+    android:drawableRight="@drawable/spinner"
+    />

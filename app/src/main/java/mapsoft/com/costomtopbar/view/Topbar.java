@@ -2,12 +2,15 @@ package mapsoft.com.costomtopbar.view;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
+
 import android.secondbook.com.buttonfragment.R;
 import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
+
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -18,7 +21,7 @@ import android.widget.TextView;
 
 public class Topbar extends RelativeLayout {
 
-    private Button wifiButton, gpsButton, rightButton;
+    private ImageView wifiButton,gpsButton, rightButton;
     private TextView tvTitle;
 
     private int leftTextColor;
@@ -36,6 +39,17 @@ public class Topbar extends RelativeLayout {
 
     private LayoutParams wifiParams,gpsParamas,rightParams,titleParams;
 
+    public topbarClickListener mListener;
+
+    public interface topbarClickListener {
+        public void leftClick();
+        public void homeClick();
+
+    }
+
+    public void setOnTopbarClickListener(topbarClickListener listener) {
+        this.mListener = listener;
+    }
 
     public Topbar(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -54,21 +68,20 @@ public class Topbar extends RelativeLayout {
 
         ta.recycle();
 
-        wifiButton = new Button(context);
-        gpsButton = new Button(context);
-        rightButton = new Button(context);
+        wifiButton = new ImageView(context);
+        gpsButton = new ImageView(context);
+        rightButton = new ImageView(context);
         tvTitle = new TextView(context);
 
-        wifiButton.setTextColor(leftTextColor);
-        wifiButton.setText(leftText);
+        //wifiButton.setTextColor(leftTextColor);
+        //wifiButton.setText(leftText);
         wifiButton.setBackground(leftBackground);
         wifiButton.setId(R.id.wifiButton);
-
         gpsButton.setBackground(gpsBackground);
 
 
-        rightButton.setTextColor(rightTextColor);
-        rightButton.setText(rightText);
+        /*rightButton.setTextColor(rightTextColor);
+        rightButton.setText(rightText);*/
         rightButton.setBackground(rightBackground);
 
         tvTitle.setText(title);
@@ -88,6 +101,7 @@ public class Topbar extends RelativeLayout {
         gpsParamas.setMargins(10, 0, 0 ,0);
         addView(gpsButton, gpsParamas);
 
+        //gpsButton.setImageBitmap(IconCut.getInstance(context).cutMap(300));
         rightParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         rightParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT, TRUE);
         rightParams.addRule(RelativeLayout.CENTER_VERTICAL, TRUE);
@@ -97,20 +111,33 @@ public class Topbar extends RelativeLayout {
         titleParams.addRule(RelativeLayout.CENTER_IN_PARENT, TRUE);
         addView(tvTitle, titleParams);
 
+        rightButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mListener.homeClick();
+            }
+        });
+
     }
-    public void setWifiButton(boolean flag) {
-        if (flag) {
-            wifiButton.setBackgroundResource(R.drawable.wifi);
-        } else {
-            wifiButton.setBackgroundResource(R.drawable.nowifi);
-        }
+    public void setWifiButton(Bitmap bitmap) {
+
+            wifiButton.setImageBitmap(bitmap);
     }
-    public void setGpsButton(boolean flag) {
-        if (flag) {
-            gpsButton.setBackgroundResource(R.drawable.gps);
-        } else {
-            gpsButton.setBackgroundResource(R.drawable.nogps);
-        }
+    public void setWifiButton(int drawble) {
+
+        wifiButton.setImageResource(drawble);
+    }
+    public void setGpsButton(Bitmap bitmap) {
+
+       gpsButton.setImageBitmap(bitmap);
+    }
+    public void setGpsButton(int drawble) {
+
+        gpsButton.setImageResource(drawble);
+    }
+    public void setHomeButton(Bitmap bitmap) {
+
+        rightButton.setImageBitmap(bitmap);
     }
     public void updateTime(String time) {
         tvTitle.setText(time);
