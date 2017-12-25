@@ -232,14 +232,15 @@ public class MsgEncoder {
 		return this.doEncode(headerAndBody, checkSum);
 	}
 
-	private byte[] encode4DriverLoginMsg(DriverLoginMsg driverLoginMsg) throws Exception{
+
+
+	public byte[] encode4DriverLoginMsg(DriverLoginMsg driverLoginMsg) throws Exception{
 		// 消息体字节数组
 		byte[] msgBody = null;
 		String time = driverLoginMsg.getLocationInfoUploadMsg().getTime();
 		time = time.replaceAll("-","").replaceAll(" ","").replaceAll(":","").substring(2);
-		Log.e(TAG,"time : " + time);
-		byte[] platNum = new byte[6];
-		platNum = driverLoginMsg.getPlatNum().getBytes();
+		byte[] platNum = {0x00,0x00,0x00,0x00,0x00,0x00};
+		//platNum = driverLoginMsg.getPlatNum().getBytes();
 		msgBody = this.bitOperator.concatAll(Arrays.asList(//
 				bitOperator.integerTo4Bytes(driverLoginMsg.getLocationInfoUploadMsg().getWarningFlagField()), // 报警标志
 				bitOperator.integerTo4Bytes(driverLoginMsg.getLocationInfoUploadMsg().getStatusField()), // 状态
@@ -260,7 +261,7 @@ public class MsgEncoder {
 		int msgBodyProps = this.jt808ProtocolUtils.generateMsgBodyProps(msgBody.length, 0b000, false, 0);
 
 		byte[] msgHeader = this.jt808ProtocolUtils.generateMsgHeader(TPMSConsts.phoneNum,
-				TPMSConsts.msg_id_terminal_driver_sign_in, msgBody, msgBodyProps, 0);
+				TPMSConsts.msg_id_terminal_driver_sign_in, msgBody, msgBodyProps, 81);
 
 		byte[] headerAndBody = this.bitOperator.concatAll(msgHeader, msgBody);
 
@@ -282,4 +283,29 @@ public class MsgEncoder {
 		// 转义
 		return jt808ProtocolUtils.doEscape4Send(noEscapedBytes, 1, noEscapedBytes.length - 2);
 	}
+
+    public byte[] encode4TerminalCommonRespMsg(ServerTextMsg textMsg) throws Exception {
+		byte[] msgBody = null;
+
+
+		msgBody = this.bitOperator.concatAll(Arrays.asList(//
+				bitOperator.integerTo2Bytes(textMsg.getReplyFlowId()),
+				bitOperator.integerTo2Bytes(TPMSConsts.msg_id_terminal_text_msg_issue),
+				bitOperator.integerTo1Bytes(0)//
+		));
+
+		// 消息头
+		int msgBodyProps = this.jt808ProtocolUtils.generateMsgBodyProps(msgBody.length, 0b000, false, 0);
+
+		byte[] msgHeader = this.jt808ProtocolUtils.generateMsgHeader(textMsg.getTerminalPhone(),
+				TPMSConsts.msg_id_terminal_common_resp, msgBody, msgBodyProps, 0);
+
+		byte[] headerAndBody = this.bitOperator.concatAll(msgHeader, msgBody);
+
+		// 校验码
+		int checkSum = this.bitOperator.getCheckSum4JT808(headerAndBody, 0, headerAndBody.length);
+
+		// 连接并且转义
+		return this.doEncode(headerAndBody, checkSum);
+    }
 }

@@ -10,17 +10,17 @@ import java.util.List;
 
 public class Path {
 
-    private int pathNum;
+    private String pathNum;
 
     private String direction;
 
     private ArrayList<Station> stations;
 
-    public int getPathNum() {
+    public String getPathNum() {
         return pathNum;
     }
 
-    public void setPathNum(int pathNum) {
+    public void setPathNum(String pathNum) {
         this.pathNum = pathNum;
     }
 

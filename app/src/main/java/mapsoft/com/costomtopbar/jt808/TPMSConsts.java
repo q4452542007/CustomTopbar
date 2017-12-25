@@ -24,6 +24,10 @@ public class TPMSConsts {
 	public static final int msg_id_terminal_authentication = 0x0102;
 	// 位置信息汇报
 	public static final int msg_id_terminal_location_info_upload = 0x0200;
+
+	//文本信息下发
+	public static final int msg_id_terminal_text_msg_issue = 0x8300;
+
 	// 胎压数据透传
 	public static final int msg_id_terminal_transmission_tyre_pressure = 0x0600;
 	// 查询终端参数应答
@@ -41,7 +45,11 @@ public class TPMSConsts {
 	// 查询终端参数
 	public static final int cmd_terminal_param_query = 0x8104;
 
-	public static final String phoneNum = "000000077777";
+	// 考勤登入
+	public static final int cmd_terminal_sign_in_resp = 0x0F03;
+
+	public static final String phoneNum = "000000023232";
+
 	public static final byte[] terminalType = {0x4D,0x44,0x4A,0x36,0x31,0x30,0x30,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 	public static final byte[] terminalId = {0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 	public static final byte[] manufacturerId = {0x37,0x31,0x31,0x30,0x32};

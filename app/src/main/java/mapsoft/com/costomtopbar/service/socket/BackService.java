@@ -2,9 +2,13 @@ package mapsoft.com.costomtopbar.service.socket;
 
 import android.annotation.SuppressLint;
 import android.app.Service;
+import android.content.ContentValues;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -14,14 +18,23 @@ import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import mapsoft.com.costomtopbar.IBackService;
+import mapsoft.com.costomtopbar.activity.MainActivity;
+import mapsoft.com.costomtopbar.constant.Constant;
+import mapsoft.com.costomtopbar.db.ChatSQLiteHelper;
+import mapsoft.com.costomtopbar.db.SharedPreferenceManager;
 import mapsoft.com.costomtopbar.jt808.HandleMessage;
 import mapsoft.com.costomtopbar.jt808.MsgDecoder;
 import mapsoft.com.costomtopbar.jt808.MsgEncoder;
 import mapsoft.com.costomtopbar.jt808.PackageData;
 
+import mapsoft.com.costomtopbar.jt808.ServerTextMsg;
 import mapsoft.com.costomtopbar.jt808.TPMSConsts;
+import mapsoft.com.costomtopbar.util.GbkToChinese;
 import mapsoft.com.costomtopbar.util.Utils;
 
 public class BackService extends Service {
@@ -33,11 +46,12 @@ public class BackService extends Service {
 
 	private static final long RIGSTER_BEAT_RATE = 5 * 1000;
 	/** 主机IP地址  */
-	private static final String HOST = "60.191.59.13";
+	private static String HOST = "";
 	/** 端口号  */
-	public static final int PORT = 7770;
+	public static int PORT = 0;
 	/** 消息广播  */
 	public static final String MESSAGE_ACTION = "org.feng.message_ACTION";
+
 	/** 心跳广播  */
 	public static final String HEART_BEAT_ACTION = "org.feng.heart_beat_ACTION";
 
@@ -49,6 +63,10 @@ public class BackService extends Service {
 
 	/**位置广播*/
 	public static final String LOCATION_UPLOAD_ACTION = "org.feng.location_upload_ACTION";
+
+	/**文本下发广播*/
+	public static final String TEXT_ISSUE_ACTION = "org.feng.text_issue_ACTION";
+
 
 	public static final byte[] REGISTER = {0x7E,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x07,0x77,0x77,0x01,0x40,0x47,0x7E};
 
@@ -68,13 +86,19 @@ public class BackService extends Service {
 	/** 弱引用 在引用对象的同时允许对垃圾对象进行回收  */
 	private WeakReference<Socket> mSocket;
 
-	private ReadThread mReadThread;
+	private ReadThread mReadThread = null;
 
 	private MsgDecoder mMsgDecoder;
 	private MsgEncoder mMsgEncoder;
-	private static PackageData mPackageData;
+	private PackageData mPackageData;
 	/*private ServerCommonRespMsgBody mServerCommonRespMsgBody;*/
 	private HandleMessage mHandleMessage;
+
+	private ServerTextMsg textMsg;
+
+	private MainActivity.MyHandler mMyHandler;
+
+	SQLiteOpenHelper openHelper;
 
 	private IBackService.Stub iBackService = new IBackService.Stub() {
 		@Override
@@ -93,11 +117,16 @@ public class BackService extends Service {
 		super.onCreate();
 		this.mMsgDecoder = new MsgDecoder();
 		this.mPackageData = new PackageData();
+		textMsg = new ServerTextMsg();
 		this.mMsgEncoder = new MsgEncoder();
 		//this.mServerCommonRespMsgBody = new ServerCommonRespMsgBody();
 		this.mHandleMessage = new HandleMessage();
-		RigsterMessage rigsterMessage = new RigsterMessage("000000077777",1);
+		mMyHandler = new MainActivity.MyHandler(this);
+		RigsterMessage rigsterMessage = new RigsterMessage("000000023232",1);
 		message = rigsterMessage.send(TPMSConsts.terminalType,TPMSConsts.terminalId,TPMSConsts.manufacturerId);
+		HOST = SharedPreferenceManager.getInstance().getString(SharedPreferenceManager.IP_SETTING,"60.191.59.13");
+		PORT = Integer.valueOf(SharedPreferenceManager.getInstance().getString(SharedPreferenceManager.PORT_SETTING,"7770"));
+
 		new InitSocketThread().start();
 	}
 
@@ -139,7 +168,9 @@ public class BackService extends Service {
 					releaseLastSocket(mSocket);
 					new InitSocketThread().start();
 			}
-			//mHandler.postDelayed(this, RIGSTER_BEAT_RATE);
+			if (mHandler != null) {
+				mHandler.postDelayed(this, RIGSTER_BEAT_RATE);
+			}
 		}
 	};
 	private Runnable checkRunnable = new Runnable() {
@@ -161,6 +192,28 @@ public class BackService extends Service {
 
 		}
 	};
+	private Runnable terminalComRespRunnable = new Runnable() {
+		@Override
+		public void run() {
+			byte[] tcr = null;
+			try {
+				tcr = mMsgEncoder.encode4TerminalCommonRespMsg(textMsg);
+
+				Log.e(TAG,Utils.bytes2HexString(tcr));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			boolean isSuccess = sendMsg(tcr);
+			if (!isSuccess) {
+				mHandler.removeCallbacks(checkRunnable);
+				mReadThread.release();
+				releaseLastSocket(mSocket);
+				new InitSocketThread().start();
+			}
+
+		}
+	};
+
 
 	public boolean sendMsg(byte[]  msg) {
 		if (null == mSocket || null == mSocket.get()) {
@@ -253,8 +306,9 @@ public class BackService extends Service {
 			super.run();
 			Socket socket = mWeakSocket.get();
 			if (null != socket) {
+				InputStream is = null;
 				try {
-					InputStream is = socket.getInputStream();
+					is = socket.getInputStream();
 					byte[] buffer = new byte[1024 * 4];
 					int length = 0;
 					while (!socket.isClosed() && !socket.isInputShutdown()
@@ -269,38 +323,47 @@ public class BackService extends Service {
 							String message = Utils.bytes2HexString(ss);
 							Log.e(TAG, "收到服务器发送来的消息："+message);
 							// 收到服务器过来的消息，就通过Broadcast发送出去
+
 							int select = mHandleMessage.handleAllMessage(mPackageData);
 							switch (select) {
 								case 10:
 									//注册成功
 									Intent rigster = new Intent(RIGSTER_BEAT_ACTION);
-									rigster.putExtra("result",0);
+									rigster.putExtra("result","0");
 									sendBroadcast(rigster);
 									//powerCode = message.substring(32,42);
-									mHandler.removeCallbacks(rigsterRunnable);
-									mHandler.post(checkRunnable);
+									if (mHandler != null) {
+										mHandler.removeCallbacks(rigsterRunnable);
+										mHandler.post(checkRunnable);
+									}
 									break;
 								case 11:
 									//注册失败,具体处理后面更改
 									Intent register1 = new Intent(RIGSTER_BEAT_ACTION);
-									register1.putExtra("result",1);
+									register1.putExtra("result","1");
 									sendBroadcast(register1);
 									//powerCode = message.substring(32,42);
-									mHandler.removeCallbacks(rigsterRunnable);
-									mHandler.post(checkRunnable);
+									if (mHandler != null) {
+										mHandler.removeCallbacks(rigsterRunnable);
+										mHandler.post(checkRunnable);
+									}
 									break;
 								case 20:
 									//鉴权成功
 									Intent check = new Intent(CHECK_BEAT_ACTION);
 									sendBroadcast(check);
-									mHandler.removeCallbacks(checkRunnable);
-									mHandler.postDelayed(heartBeatRunnable, HEART_BEAT_RATE);
+									if (mHandler != null) {
+										mHandler.removeCallbacks(checkRunnable);
+										mHandler.postDelayed(heartBeatRunnable, HEART_BEAT_RATE);
+									}
 									break;
 								case 21:
 									//鉴权失败,重新注册
-									mHandler.removeCallbacks(checkRunnable);
-									mHandler.postDelayed(rigsterRunnable, RIGSTER_BEAT_RATE);
-									//mHandler.post(rigsterRunnable);
+									if (mHandler != null) {
+										mHandler.removeCallbacks(checkRunnable);
+										mHandler.postDelayed(rigsterRunnable, RIGSTER_BEAT_RATE);
+										//mHandler.post(rigsterRunnable);
+									}
 									break;
 								case 30:
 									//正常心跳
@@ -308,12 +371,35 @@ public class BackService extends Service {
 									sendBroadcast(heartBeat);
 									break;
 								case 40:
-
 									Intent locationUpload= new Intent(LOCATION_UPLOAD_ACTION);
 									sendBroadcast(locationUpload);
 									//位置信息汇报成功
-									mHandler.postDelayed(heartBeatRunnable, HEART_BEAT_RATE);
-
+									if (mHandler != null) {
+										mHandler.postDelayed(heartBeatRunnable, HEART_BEAT_RATE);
+									}
+									break;
+								case 60:
+									textMsg = mMsgDecoder.toServerTextMsgBody(mPackageData);
+									mHandler.post(terminalComRespRunnable);
+									Log.e(TAG,"收到短消息:" + textMsg.getText());
+									//准备数据库，存取聊天记录
+									openHelper=new ChatSQLiteHelper(getApplicationContext(),"chat.db",null,1) ;
+									SQLiteDatabase db=openHelper.getReadableDatabase();
+									DateFormat df = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+									String date = df.format(new Date());
+									ContentValues values = new ContentValues();
+									values.put("user_id", Constant.myuser_id);
+									values.put("contentChat",textMsg.getText());
+									values.put("typeChat","text");
+									values.put("postdateChat",date);
+									values.put("isreadChat",0);
+									values.put("ismineChat",0);
+									db.insert("chat",null,values);
+									db.close();
+									Intent text = new Intent(TEXT_ISSUE_ACTION);
+									text.putExtra("result",textMsg.getText());
+									sendBroadcast(text);
+									break;
 								default:
 									// 其他消息回复
 									/*Intent intent = new Intent(MESSAGE_ACTION);
@@ -323,11 +409,38 @@ public class BackService extends Service {
 							}
 						} 
 					}
+
 				} catch (IOException e) {
 					e.printStackTrace();
 					Log.e(TAG,"接收失败");
 				}
+				finally {
+					try {
+						is.close();
+					}catch (IOException e) {
+						e.printStackTrace();
+						Log.e(TAG,"关闭失败");
+					}
+
+				}
+
 			}
 		}
+	}
+
+	@Override
+	public boolean onUnbind(Intent intent) {
+		if (mHandler !=null) {
+			mHandler.removeMessages(0);
+			mHandler = null;
+		}
+		Message mMessage =new Message();
+		mMessage.what=0x003;
+		mMyHandler.sendMessage(mMessage);
+		if (mReadThread != null) {
+			mReadThread.release();
+			releaseLastSocket(mSocket);
+		}
+		return super.onUnbind(intent);
 	}
 }

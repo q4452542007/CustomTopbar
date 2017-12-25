@@ -10,6 +10,9 @@ import android.util.AttributeSet;
 import android.view.Gravity;
 import android.view.View;
 
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -21,12 +24,13 @@ import android.widget.TextView;
 
 public class Topbar extends RelativeLayout {
 
-    private ImageView wifiButton,gpsButton, rightButton;
+    private ImageView wifiButton,gpsButton, rightButton, messageButton;
     private TextView tvTitle;
 
     private int leftTextColor;
     private Drawable leftBackground;
     private Drawable gpsBackground;
+    private Drawable messageBackgeound;
     private String leftText;
 
     private int rightTextColor;
@@ -37,7 +41,7 @@ public class Topbar extends RelativeLayout {
     private float titleTextSize;
     private int titleTextColor;
 
-    private LayoutParams wifiParams,gpsParamas,rightParams,titleParams;
+    private LayoutParams wifiParams,gpsParamas,rightParams,titleParams,messageParams;
 
     public topbarClickListener mListener;
 
@@ -59,6 +63,7 @@ public class Topbar extends RelativeLayout {
         leftBackground = ta.getDrawable(R.styleable.Topbar_leftBackground);
         leftText = ta.getString(R.styleable.Topbar_leftText);
         gpsBackground = ta.getDrawable(R.styleable.Topbar_gpsBackground);
+        messageBackgeound = ta.getDrawable(R.styleable.Topbar_messageBackground);
         rightTextColor = ta.getColor(R.styleable.Topbar_rightTextColor, 0);
         rightBackground = ta.getDrawable(R.styleable.Topbar_rightBackground);
         rightText = ta.getString(R.styleable.Topbar_rightText);
@@ -71,6 +76,7 @@ public class Topbar extends RelativeLayout {
         wifiButton = new ImageView(context);
         gpsButton = new ImageView(context);
         rightButton = new ImageView(context);
+        messageButton = new ImageView(context);
         tvTitle = new TextView(context);
 
         //wifiButton.setTextColor(leftTextColor);
@@ -78,7 +84,8 @@ public class Topbar extends RelativeLayout {
         wifiButton.setBackground(leftBackground);
         wifiButton.setId(R.id.wifiButton);
         gpsButton.setBackground(gpsBackground);
-
+        gpsButton.setId(R.id.gpsButton);
+        messageButton.setBackground(messageBackgeound);
 
         /*rightButton.setTextColor(rightTextColor);
         rightButton.setText(rightText);*/
@@ -100,6 +107,12 @@ public class Topbar extends RelativeLayout {
         gpsParamas.addRule(RelativeLayout.CENTER_VERTICAL, TRUE);
         gpsParamas.setMargins(10, 0, 0 ,0);
         addView(gpsButton, gpsParamas);
+
+        messageParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        messageParams.addRule(RelativeLayout.RIGHT_OF,gpsButton.getId());
+        messageParams.addRule(RelativeLayout.CENTER_VERTICAL, TRUE);
+        messageParams.setMargins(10, 0, 0 ,0);
+        addView(messageButton, messageParams);
 
         //gpsButton.setImageBitmap(IconCut.getInstance(context).cutMap(300));
         rightParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -135,6 +148,24 @@ public class Topbar extends RelativeLayout {
 
         gpsButton.setImageResource(drawble);
     }
+    public void setMessageButton(int drawble) {
+        if (messageButton.getVisibility() == View.INVISIBLE)
+        {
+            messageButton.setVisibility(View.VISIBLE);
+            messageButton.setWillNotDraw(true);
+        }
+        messageButton.setImageResource(drawble);
+        setFlickerAnimation(messageButton);
+    }
+
+    public void cancleMessageButton() {
+        if (messageButton.getVisibility() == View.VISIBLE)
+        {
+            messageButton.setWillNotDraw(false);
+            setFlickerAnimationNull(messageButton);
+            messageButton.setVisibility(View.INVISIBLE);
+        }
+    }
     public void setHomeButton(Bitmap bitmap) {
 
         rightButton.setImageBitmap(bitmap);
@@ -142,5 +173,19 @@ public class Topbar extends RelativeLayout {
     public void updateTime(String time) {
         tvTitle.setText(time);
     }
+
+    private void setFlickerAnimation(ImageView iv_chat_head) {
+        final Animation animation = new AlphaAnimation(1, 0);
+        animation.setDuration(750);//闪烁时间间隔
+        animation.setInterpolator(new AccelerateDecelerateInterpolator());
+        animation.setRepeatCount(Animation.INFINITE);
+        animation.setRepeatMode(Animation.REVERSE);
+        iv_chat_head.setAnimation(animation);
+    }
+    private void setFlickerAnimationNull(ImageView iv_chat_head) {
+
+        iv_chat_head.setAnimation(null);
+    }
+
 }
 

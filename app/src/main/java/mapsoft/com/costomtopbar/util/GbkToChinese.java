@@ -24,10 +24,16 @@ public class GbkToChinese {
         return sGbkToChinese;
     }
     public String toString(String str) throws UnsupportedEncodingException {
-        String encoded = "str";
-        byte a0 = (byte) Integer.parseInt(encoded.substring(0, 2), 16);
-        byte a1 = (byte) Integer.parseInt(encoded.substring(2), 16);
-        byte[] gbk = new byte[] {a0, a1};
+        String encoded = str;
+        int a = 0;
+        byte[] gbk = new byte[1024];
+        for (int i = 0; i<str.length(); i=i+2) {
+            byte a0 = (byte) Integer.parseInt(encoded.substring(i, i+2), 16);
+            //byte a1 = (byte) Integer.parseInt(encoded.substring(2), 16);
+            gbk[a] = a0;
+            a = a+1;
+        }
+
         String chinese = null;
         chinese = new String(gbk, GBK);
         return chinese;

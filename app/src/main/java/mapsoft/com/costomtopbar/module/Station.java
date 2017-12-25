@@ -8,7 +8,7 @@ public class Station {
 
     //站点名
     private String mName;
-    //站点号
+    //站点编号
     private int num;
     // 纬度
     private double latitude;
@@ -16,6 +16,10 @@ public class Station {
     private double longitude;
     //进站半径
     private int inRadius;
+    //站点序号
+    private int order;
+    //站点类型
+    private int type;
 
     public String getName() {
         return mName;
@@ -55,5 +59,21 @@ public class Station {
 
     public void setInRadius(int inRadius) {
         this.inRadius = inRadius;
+    }
+
+    public int getOrder() {
+        return order;
+    }
+
+    public void setOrder(int order) {
+        this.order = order;
+    }
+
+    public int getType() {
+        return type;
+    }
+
+    public void setType(int type) {
+        this.type = type;
     }
 }

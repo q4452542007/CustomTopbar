@@ -1,6 +1,5 @@
 package mapsoft.com.costomtopbar.fragment;
 
-
 import android.hardware.Camera;
 import android.kpocom.Gpioctljni;
 import android.media.MediaRecorder;
@@ -18,9 +17,6 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 
-/**
- * Created by WangChang on 2016/5/15.
- */
 public class DVRFragment extends BaseFragment implements View.OnClickListener,SurfaceHolder.Callback {
 
     private static final String ARG_TV = "option";

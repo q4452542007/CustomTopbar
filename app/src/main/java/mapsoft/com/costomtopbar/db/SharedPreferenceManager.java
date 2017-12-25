@@ -25,6 +25,7 @@ public class SharedPreferenceManager {
     public static final String IP_SETTING = "ip";    //IP设置
     public static final String PORT_SETTING = "port";   //端口设置
     public static final String ID_SETTING = "id";
+    public static final String PATH_SETTING = "path";
 
     public static SharedPreferenceManager getInstance() {
         if ( mInstance == null) {

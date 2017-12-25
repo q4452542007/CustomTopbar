@@ -5,6 +5,7 @@ import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 
+import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -15,56 +16,65 @@ import android.content.ServiceConnection;
 
 import android.content.res.Configuration;
 import android.content.res.Resources;
-
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbManager;
+import android.kpocom.Gpioctljni;
 import android.os.Bundle;
+
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
 import android.secondbook.com.buttonfragment.R;
-import android.text.TextUtils;
+
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.WindowManager;
 import android.widget.RelativeLayout;
-
 import android.widget.Toast;
-
-import com.amap.api.location.AMapLocation;
 import com.amap.api.location.AMapLocationClient;
 import com.amap.api.location.AMapLocationClientOption;
-import com.amap.api.location.AMapLocationListener;
-import com.amap.api.location.AMapLocationQualityReport;
-
+import com.iflytek.cloud.SpeechSynthesizer;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import mapsoft.com.costomtopbar.IBackService;
+
+import mapsoft.com.costomtopbar.ITTsService;
 import mapsoft.com.costomtopbar.constant.Constant;
-import mapsoft.com.costomtopbar.fragment.AMapUtils;
+import mapsoft.com.costomtopbar.db.ChatSQLiteHelper;
+import mapsoft.com.costomtopbar.db.SharedPreferenceManager;
 import mapsoft.com.costomtopbar.fragment.AffairFragment;
 import mapsoft.com.costomtopbar.fragment.ChangePathFragment;
 import mapsoft.com.costomtopbar.fragment.HomeFragment;
 import mapsoft.com.costomtopbar.fragment.LoginFragment;
 import mapsoft.com.costomtopbar.fragment.DVRFragment;
+import mapsoft.com.costomtopbar.fragment.ManualReportFragment;
 import mapsoft.com.costomtopbar.fragment.TalkFragment;
+import mapsoft.com.costomtopbar.html.ReadHtmlThread;
+import mapsoft.com.costomtopbar.jt808.DriverLoginMsg;
 import mapsoft.com.costomtopbar.jt808.JT808ProtocolUtils;
 import mapsoft.com.costomtopbar.jt808.LocationInfoUploadMsg;
 import mapsoft.com.costomtopbar.jt808.MsgEncoder;
-import mapsoft.com.costomtopbar.jt808.TPMSConsts;
+import mapsoft.com.costomtopbar.module.Path;
+import mapsoft.com.costomtopbar.report.GeofenceService;
+import mapsoft.com.costomtopbar.report.TTsService;
 import mapsoft.com.costomtopbar.service.socket.BackService;
-import mapsoft.com.costomtopbar.service.socket.RigsterMessage;
 import mapsoft.com.costomtopbar.util.BitOperator;
 import mapsoft.com.costomtopbar.util.Utils;
 import mapsoft.com.costomtopbar.view.IconCut;
 import mapsoft.com.costomtopbar.view.Topbar;
 
 
-public class MainActivity extends BaseActivity implements OnClickListener, HomeFragment.FragmentInteraction{
-    private static final String TAG = "MainActivity";
-    private final int SDK_PERMISSION_REQUEST = 127;
+public class MainActivity extends BaseActivity implements OnClickListener, HomeFragment.FragmentInteraction,LoginFragment.FragmentInteraction1,ChangePathFragment.FragmentInteraction2{
     /***
      * fragment相关
      */
-    private HomeFragment mHomeFragment;
+    private static HomeFragment mHomeFragment;
     private LoginFragment mLoginFragment;
+    private ManualReportFragment mManualReportFragment;
     private ChangePathFragment mChangePathFragment;
     private AffairFragment mAffairFragment;
     private DVRFragment mDVRFragment;
@@ -79,11 +89,14 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
     private FragmentTransaction fragmentTransaction;
 
     //socket相关
-    private Intent mServiceIntent;
+    private Intent mSocketIntent;
+    private Intent mTtsIntent;
     private IBackService iBackService;
+    private ITTsService iTtsService;
+
 
     //自定义顶部栏
-    private Topbar mTopbar;
+    private static Topbar mTopbar;
 
     private static byte[] message;
 
@@ -92,12 +105,28 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
     private MsgEncoder mMsgEncoder;
 
     private LocationInfoUploadMsg mLocationInfoUploadMsg;
-    private int count = 0;
+    private static int count = 0;
     private int flow = 0;
     private static Boolean isChecked = false;
 
     private AMapLocationClient locationClient = null;
     private AMapLocationClientOption locationOption = null;
+    //private ReportStation mReportStation;
+
+    private ReadHtmlThread mReadHtmlThread;
+    private static Path mPath = null;
+    private static GeofenceService mGeofenceService = null;
+
+    private TTsService mTTsService = null;
+    // 语音合成对象
+    private SpeechSynthesizer mTts;
+
+    public static MyHandler mMyHandler;
+    private TimeHandler handler;
+
+    //检测报警
+    private TimerTask task = null;
+    private Timer timer = new Timer();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,15 +134,10 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         setContentView(R.layout.activity_main);
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
         Log.e("TAG", "Max memory is " + maxMemory + "KB");
-//        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         mMain = (RelativeLayout) findViewById(R.id.main);
-        //mMain.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
+        mMain.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
         mTopbar = (Topbar) findViewById(R.id.topbar);
-        //获取网络状态
-        /*mIntentFilter = new IntentFilter();
-        mIntentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-        mNetworkChangeReceiver = new NetworkChangeReceiver();
-        registerReceiver(mNetworkChangeReceiver, mIntentFilter);*/
         mTopbar.setHomeButton(IconCut.getInstance(this).cutHomeIcon());
         // 進入系統默認為movie
         mHomeFragment = new HomeFragment();
@@ -126,7 +150,60 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
     }
 
     private void initData() {
+        mMyHandler = new MyHandler(this);
+        handler = new TimeHandler();
+        String pathAndDi = SharedPreferenceManager.getInstance().getString(SharedPreferenceManager.PATH_SETTING, "65,up");
+        mReadHtmlThread = new ReadHtmlThread(mMyHandler, pathAndDi.split(",")[0],pathAndDi.split(",")[1]);
+        mReadHtmlThread.run();
+        task = new TimerTask() {
+            @Override
+            public void run() {
+                // TODO Auto-generated method stub
+                Message message =new Message();
+                message.what = 1;
+                handler.sendMessage(message);
+            }
+        };
+        timer.schedule(task, 1000, 1000);
+    }
 
+    //后期收到回应清零
+    class TimeHandler extends Handler{
+        @Override
+        public void handleMessage(Message msg) {
+            // TODO Auto-generated method stub
+            if (Gpioctljni.getAlarmValue() == 1) {
+                try {
+                    mLocationInfoUploadMsg.warningFlagField = 524289;
+                    Log.i(TAG, "是否为空：" + iBackService);
+                    if (iBackService == null) {
+                        Toast.makeText(MainActivity.this,
+                                "没有连接，可能是服务器已断开", Toast.LENGTH_SHORT).show();
+                    } else {
+                        byte[] alarmMsg = mMsgEncoder.encode4LocationInfoUploadMsg(mLocationInfoUploadMsg, 0);
+                        String message = Utils.bytes2HexString(alarmMsg);
+                        Log.e(TAG, "driverMsg: " + message);
+                        boolean isSend = iBackService.sendMessage(alarmMsg);
+                        if (isSend) {
+                            flow++;
+                        } else {
+                            isChecked = false;
+                        }
+                        Toast.makeText(MainActivity.this,
+                                isSend ?"发送报警" : "失败", Toast.LENGTH_SHORT)
+                                .show();
+                        //et.setText("");
+                    }
+
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+            }
+            super.handleMessage(msg);
+        }
     }
 
     @Override
@@ -137,13 +214,21 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
     @Override
     protected void onStart() {
         super.onStart();
-        bindService(mServiceIntent, conn, BIND_AUTO_CREATE);
+        bindService(mSocketIntent, conn, BIND_AUTO_CREATE);
+        bindService(mTtsIntent, conn1, BIND_AUTO_CREATE);
+        mGeofenceService = new GeofenceService(this, iTtsService);
         // 开始服务
         registerReceiver();
+        mGeofenceService.registerReceiver();
+        /*IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+        registerReceiver(usbReceiver, filter);*/
     }
 
     private void findById() {
-        mServiceIntent = new Intent(this, BackService.class);
+        mSocketIntent = new Intent(this, BackService.class);
+        mTtsIntent = new Intent(this, TTsService.class);
         mHomeLayout = (RelativeLayout) findViewById(R.id.home_layout_view);
         mHomeLayout.setOnClickListener(this);
         mChangePathLayout = (RelativeLayout) findViewById(R.id.path_layout_view);
@@ -163,10 +248,11 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         mAffairLayout.setOnClickListener(this);
         mDvrLayout.setOnClickListener(this);
 
+
         bitOperator = new BitOperator();
         jt808ProtocolUtils = new JT808ProtocolUtils();
         mMsgEncoder = new MsgEncoder();
-
+        //mReportStation = new ReportStation(getApplicationContext());
         mHomeLayout.setBackgroundResource(R.drawable.shouyec);
         mTopbar.setOnTopbarClickListener(new Topbar.topbarClickListener() {
             @Override
@@ -186,7 +272,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                         boolean isSend = iBackService.sendMessage(Constant.HEART);
                         Toast.makeText(MainActivity.this,
                                 isSend ? "success" : "fail", Toast.LENGTH_SHORT)
-                                .show();
+                        .show();
                         //et.setText("");
                     }
                 } catch (RemoteException e) {
@@ -215,6 +301,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                 mTalkLayout.setBackgroundResource(R.drawable.hanhua);
                 //显示Homefragment
                 hideFragment(mLoginFragment,fragmentTransaction);
+                hideFragment(mManualReportFragment,fragmentTransaction);
                 hideFragment(mChangePathFragment,fragmentTransaction);
                 hideFragment(mAffairFragment,fragmentTransaction);
                 hideFragment(mDVRFragment,fragmentTransaction);
@@ -234,6 +321,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                 mDvrLayout.setBackgroundResource(R.drawable.dvr);
                 mTalkLayout.setBackgroundResource(R.drawable.hanhua);
                 hideFragment(mLoginFragment,fragmentTransaction);
+                hideFragment(mManualReportFragment,fragmentTransaction);
                 hideFragment(mHomeFragment,fragmentTransaction);
                 hideFragment(mAffairFragment,fragmentTransaction);
                 hideFragment(mDVRFragment,fragmentTransaction);
@@ -254,6 +342,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                 mTalkLayout.setBackgroundResource(R.drawable.hanhua);
                 //显示AffairFragment
                 hideFragment(mLoginFragment,fragmentTransaction);
+                hideFragment(mManualReportFragment,fragmentTransaction);
                 hideFragment(mChangePathFragment,fragmentTransaction);
                 hideFragment(mHomeFragment,fragmentTransaction);
                 hideFragment(mDVRFragment,fragmentTransaction);
@@ -268,6 +357,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
 
             case R.id.dvr_layout_view:
                 mHomeLayout.setBackgroundResource(R.drawable.shouye);
+                hideFragment(mManualReportFragment,fragmentTransaction);
                 mChangePathLayout.setBackgroundResource(R.drawable.xianlu);
                 mAffairLayout.setBackgroundResource(R.drawable.shijian);
                 mDvrLayout.setBackgroundResource(R.drawable.dvrc);
@@ -290,6 +380,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                 mAffairLayout.setBackgroundResource(R.drawable.shijian);
                 mDvrLayout.setBackgroundResource(R.drawable.dvr);
                 mTalkLayout.setBackgroundResource(R.drawable.hanhuac);
+                hideFragment(mManualReportFragment,fragmentTransaction);
                 hideFragment(mLoginFragment,fragmentTransaction);
                 hideFragment(mChangePathFragment,fragmentTransaction);
                 hideFragment(mHomeFragment,fragmentTransaction);
@@ -308,7 +399,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         }
         // 不要忘记提交
         fragmentTransaction.commit();
-}
+    }
 
     @Override
     protected void onDestroy() {
@@ -335,6 +426,47 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         }
         fragmentTransaction.commit();
     }
+    public void toReportFragment() {
+        fragmentTransaction = fm.beginTransaction();
+        mHomeLayout.setBackgroundResource(R.drawable.shouye);
+        mChangePathLayout.setBackgroundResource(R.drawable.xianlu);
+        mAffairLayout.setBackgroundResource(R.drawable.shijian);
+        mDvrLayout.setBackgroundResource(R.drawable.dvr);
+        mTalkLayout.setBackgroundResource(R.drawable.hanhua);
+        //显示Homefragment
+        hideFragment(mChangePathFragment,fragmentTransaction);
+        hideFragment(mAffairFragment,fragmentTransaction);
+        hideFragment(mDVRFragment,fragmentTransaction);
+        hideFragment(mTalkFragment, fragmentTransaction);
+        if (mManualReportFragment == null){
+            mManualReportFragment = new ManualReportFragment();
+            fragmentTransaction.add(R.id.fragment_content,mManualReportFragment);
+        } else {
+            fragmentTransaction.show(mManualReportFragment);
+        }
+        fragmentTransaction.commit();
+    }
+
+    public void manulReport(String msg) {
+        if (iTtsService != null) {
+            try {
+                if (msg.equals(Constant.NEXT_STATION)) {
+                    mHomeFragment.changeStation(mPath, Constant.NEXT_STATION);
+                }
+                if (msg.equals(Constant.IN_STATION)) {
+                    String ss = mHomeFragment.changeStation(mPath, Constant.IN_STATION);
+                    iTtsService.report(ss + ",到了");
+                }
+                if (msg.equals(Constant.OUT_STATION)) {
+                    String ss = mHomeFragment.changeStation(mPath, Constant.OUT_STATION);
+                    iTtsService.report("下一站," + ss);
+                }
+
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
     // 注册广播
     private void registerReceiver() {
@@ -344,6 +476,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         intentFilter.addAction(BackService.RIGSTER_BEAT_ACTION);
         intentFilter.addAction(BackService.CHECK_BEAT_ACTION);
         intentFilter.addAction(BackService.LOCATION_UPLOAD_ACTION);
+        intentFilter.addAction(BackService.TEXT_ISSUE_ACTION);
         registerReceiver(mReceiver, intentFilter);
     }
 
@@ -360,15 +493,15 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
 
             }
             else if (action.equals(BackService.RIGSTER_BEAT_ACTION)) {// 注册广播
-                switch (intent.getIntExtra("result",1)) {
+                switch (Integer.valueOf(intent.getStringExtra("result"))) {
                     case 0:
-                        //Log.e(TAG,"注册成功");
-                        //等待添加UI更新
-                        break;
+                    //Log.e(TAG,"注册成功");
+                    //等待添加UI更新
+                    break;
                     case 1:
-                        //Log.e(TAG,"注册失败");
-                        //等待添加UI更新
-                        break;
+                    //Log.e(TAG,"注册失败");
+                    //等待添加UI更新
+                    break;
                 }
 
             }
@@ -377,6 +510,19 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
             }
             else if (action.equals(BackService.LOCATION_UPLOAD_ACTION)) {
                 //等待添加UI
+            }
+            else if (action.equals(BackService.LOCATION_UPLOAD_ACTION)) {
+                //等待添加UI
+            }
+            else if (action.equals(BackService.TEXT_ISSUE_ACTION)) {
+                    try {
+                        String stringExtra = intent.getStringExtra("result");
+                        iTtsService.report("收到平台短信," + stringExtra);
+                        mTopbar.setMessageButton(R.drawable.messagebar);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+
             }
         }
     };
@@ -394,6 +540,19 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
             iBackService = IBackService.Stub.asInterface(service);
         }
     };
+    private ServiceConnection conn1 = new ServiceConnection() {
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            // 未连接为空
+            iTtsService = null;
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // 已连接
+            iTtsService = ITTsService.Stub.asInterface(service);
+        }
+    };
 
     @Override
     protected void onPause() {
@@ -402,6 +561,18 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         unregisterReceiver(mReceiver);
         // 注销服务
         unbindService(conn);
+        unbindService(conn1);
+        mGeofenceService.unRegisterReceiver();
+        isChecked = false;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        bindService(mSocketIntent, conn, Context.BIND_AUTO_CREATE);
+        bindService(mTtsIntent, conn1, Context.BIND_AUTO_CREATE);
+        registerReceiver();
+        mGeofenceService.registerReceiver();
     }
 
     @Override
@@ -429,7 +600,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                         }
                         Toast.makeText(MainActivity.this,
                                 isSend ? "发送位置信息" : "失败", Toast.LENGTH_SHORT)
-                                .show();
+                        .show();
                         //et.setText("");
                     }
 
@@ -443,6 +614,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
 
         }
     }
+
     @Override
     public Resources getResources() {
         Resources res = super.getResources();
@@ -451,5 +623,152 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         res.updateConfiguration(config,res.getDisplayMetrics() );
         return res;
     }
+
+    @Override
+    public void sendDriverMsg(DriverLoginMsg driverLoginMsg) {
+        if (mLocationInfoUploadMsg == null) {
+            Toast.makeText(this,"稍等片刻,定位信息尚未上传",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        driverLoginMsg.setLocationInfoUploadMsg(mLocationInfoUploadMsg);
+        try {
+            Log.i(TAG, "是否为空：" + iBackService);
+            if (iBackService == null) {
+                Toast.makeText(getApplicationContext(),
+                        "没有连接，可能是服务器已断开", Toast.LENGTH_SHORT).show();
+            } else {
+                byte[] driverMsg = mMsgEncoder.encode4DriverLoginMsg(driverLoginMsg);
+                String message = Utils.bytes2HexString(driverMsg);
+                Log.e(TAG,"driverMsg: " + message);
+                boolean isSend = iBackService.sendMessage(driverMsg);
+                if (isSend) {
+                    flow ++;
+                }
+                else {
+                    isChecked = false;
+                }
+                Toast.makeText(MainActivity.this,
+                        isSend ? "考勤签到" : "失败", Toast.LENGTH_SHORT)
+                .show();
+                //et.setText("");
+            }
+
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void sendPath(String pathNum, String direction) {
+        if (direction.equals("up")) {
+            mReadHtmlThread = new ReadHtmlThread(mMyHandler, pathNum, "up");
+            mReadHtmlThread.run();
+            SharedPreferenceManager.getInstance().putString(SharedPreferenceManager.PATH_SETTING, pathNum + "," + "up");
+
+        } else {
+            mReadHtmlThread = new ReadHtmlThread(mMyHandler, pathNum, "down");
+            mReadHtmlThread.run();
+            SharedPreferenceManager.getInstance().putString(SharedPreferenceManager.PATH_SETTING, pathNum + "," + "down");
+
+        }
+    }
+
+
+    public static class MyHandler extends Handler {
+
+        private Context mContext;
+
+        public MyHandler(Service service){
+            super();
+            mContext = service;
+        }
+
+        public MyHandler(MainActivity activity) {
+            super();
+            mContext = activity;
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            if (mContext == null) {
+                super.handleMessage(msg);
+                return;
+            }
+            switch (msg.what) {
+                case 0x001:
+                    mPath = (Path) msg.obj;
+                    mGeofenceService.creatPoints(mPath);
+                    mHomeFragment.changePath(mPath);
+                    break;
+                case 0x002:
+                    mHomeFragment.changeStation(mPath,(String) msg.obj);
+                    break;
+                case 0x003:
+                    isChecked = false;
+                    count = 0;
+                    break;
+                case 0x004:
+                    mTopbar.cancleMessageButton();
+                    break;
+            }
+        }
+    }
+    private static final String ACTION_USB_PERMISSION = "com.github.mjdev.libaums.USB_PERMISSION";
+    private static final String TAG = MainActivity.class.getSimpleName();
+
+    private static final int COPY_STORAGE_PROVIDER_RESULT = 0;
+    private static final int OPEN_STORAGE_PROVIDER_RESULT = 1;
+    private static final int OPEN_DOCUMENT_TREE_RESULT = 2;
+
+    private static final int REQUEST_EXT_STORAGE_WRITE_PERM = 0;
+
+    private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            String action = intent.getAction();
+            if (ACTION_USB_PERMISSION.equals(action)) {
+
+                UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+
+                    if (device != null) {
+                        //setupDevice();
+                    }
+                }
+
+            } else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
+                UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+
+                Log.d(TAG, "USB device attached");
+
+                // determine if connected device is a mass storage devuce
+                if (device != null) {
+                    //discoverDevice();
+                }
+            } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
+                UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+
+                Log.d(TAG, "USB device detached");
+
+                // determine if connected device is a mass storage devuce
+                if (device != null) {
+                    /*if (MainActivity.this.currentDevice != -1) {
+                        MainActivity.this.massStorageDevices[currentDevice].close();
+                    }
+                    // check if there are other devices or set action bar title
+                    // to no device if not
+                    discoverDevice();*/
+
+                }
+            }
+
+        }
+    };
+
+
+
 
 }

@@ -37,6 +37,7 @@ import com.amap.api.location.AMapLocationQualityReport;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 
@@ -44,6 +45,8 @@ import mapsoft.com.costomtopbar.IBackService;
 import mapsoft.com.costomtopbar.activity.MainActivity;
 import mapsoft.com.costomtopbar.constant.Constant;
 import mapsoft.com.costomtopbar.jt808.LocationInfoUploadMsg;
+import mapsoft.com.costomtopbar.module.Path;
+import mapsoft.com.costomtopbar.module.Station;
 import mapsoft.com.costomtopbar.util.BCD8421Operater;
 import mapsoft.com.costomtopbar.view.IconCut;
 import mapsoft.com.costomtopbar.view.Topbar;
@@ -87,7 +90,7 @@ public class HomeFragment extends BaseFragment {
     private boolean previewRunning = false;
     private boolean isOpen = false;
 
-    private TextView LocationResult,speedResult;
+    private TextView LocationResult,speedResult,pathView,directionView,speedView,currentStation,nextStation;
 
     private float mSpeed;
     private String mTime;
@@ -104,11 +107,10 @@ public class HomeFragment extends BaseFragment {
     private BCD8421Operater mBCD8421Operater;
     private FragmentInteraction listterner;
 
-    private LocationInfoUploadMsg mLocationInfoUploadMsg;
+    private static LocationInfoUploadMsg mLocationInfoUploadMsg;
 
     private AMapLocationClient locationClient = null;
     private AMapLocationClientOption locationOption = null;
-
 
     private String time;
     @Override
@@ -145,17 +147,18 @@ public class HomeFragment extends BaseFragment {
         speedResult = (TextView) view.findViewById(R.id.bus_speed);
         LocationResult = (TextView) view.findViewById(R.id.latitude);
         LocationResult.setMovementMethod(ScrollingMovementMethod.getInstance());
+        pathView = (TextView) view.findViewById(R.id.bus_path);
+        directionView = (TextView) view.findViewById(R.id.bus_speed);
+        currentStation = (TextView) view.findViewById(R.id.current_station);
+        nextStation = (TextView) view.findViewById(R.id.next_station);
         //wifiImage.setImageResource(R.drawable.nowifi1);
         //gpsImage.setImageResource(R.drawable.nogps);
 
-
-
-
         // 初始化surfaceView
-       /* surfaceView = (SurfaceView) view.findViewById(R.id.surface);
-        surfaceHolder = surfaceView.getHolder();
-        surfaceHolder.addCallback(new MySurfaceViewCallback());
-        surfaceHolder.setType(surfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);*/
+        /* surfaceView = (SurfaceView) view.findViewById(R.id.surface);
+         surfaceHolder = surfaceView.getHolder();
+         surfaceHolder.addCallback(new MySurfaceViewCallback());
+         surfaceHolder.setType(surfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);*/
 
         //获取网络状态
         mIntentFilter = new IntentFilter();
@@ -180,7 +183,6 @@ public class HomeFragment extends BaseFragment {
         fragment.setArguments(args);
         return fragment;
     }
-
 
     /**
      * 网络状态广播
@@ -227,7 +229,7 @@ public class HomeFragment extends BaseFragment {
 
         @Override
         public void surfaceChanged(SurfaceHolder holder, int format, int width,
-                                   int height) {
+                int height) {
             // TODO Auto-generated method stub
             System.out.println("------surfaceChanged------");
             surfaceHolder = holder;
@@ -399,7 +401,7 @@ public class HomeFragment extends BaseFragment {
         mOption.setOnceLocation(false);//可选，设置是否单次定位。默认是false
         mOption.setOnceLocationLatest(false);//可选，设置是否等待wifi刷新，默认为false.如果设置为true,会自动变为单次定位，持续定位时不要使用
         AMapLocationClientOption.setLocationProtocol(AMapLocationClientOption.AMapLocationProtocol.HTTP);//可选， 设置网络请求的协议。可选HTTP或者HTTPS。默认为HTTP
-        mOption.setSensorEnable(false);//可选，设置是否使用传感器。默认是false
+        mOption.setSensorEnable(true);//可选，设置是否使用传感器。默认是false
         mOption.setWifiScan(true); //可选，设置是否开启wifi扫描。默认为true，如果设置为false会同时停止主动刷新，停止以后完全依赖于系统刷新，定位位置可能存在误差
         mOption.setLocationCacheEnable(false); //可选，设置是否使用缓存定位，默认为true
         return mOption;
@@ -449,7 +451,7 @@ public class HomeFragment extends BaseFragment {
                 //mTopbar.setGpsButton(IconCut.getInstance(context).cutGps(false));
                 mTopbar.setGpsButton(R.drawable.nogpsbar);
             }
-}
+        }
     };
 
 
@@ -462,20 +464,20 @@ public class HomeFragment extends BaseFragment {
         String str = "";
         switch (statusCode){
             case AMapLocationQualityReport.GPS_STATUS_OK:
-                str = "GPS状态正常";
-                break;
+            str = "GPS状态正常";
+            break;
             case AMapLocationQualityReport.GPS_STATUS_NOGPSPROVIDER:
-                str = "手机中没有GPS Provider，无法进行GPS定位";
-                break;
+            str = "手机中没有GPS Provider，无法进行GPS定位";
+            break;
             case AMapLocationQualityReport.GPS_STATUS_OFF:
-                str = "GPS关闭，建议开启GPS，提高定位质量";
-                break;
+            str = "GPS关闭，建议开启GPS，提高定位质量";
+            break;
             case AMapLocationQualityReport.GPS_STATUS_MODE_SAVING:
-                str = "选择的定位模式中不包含GPS定位，建议选择包含GPS定位的模式，提高定位质量";
-                break;
+            str = "选择的定位模式中不包含GPS定位，建议选择包含GPS定位的模式，提高定位质量";
+            break;
             case AMapLocationQualityReport.GPS_STATUS_NOGPSPERMISSION:
-                str = "没有GPS定位权限，建议开启gps定位权限";
-                break;
+            str = "没有GPS定位权限，建议开启gps定位权限";
+            break;
         }
         return str;
     }
@@ -579,4 +581,54 @@ public class HomeFragment extends BaseFragment {
         }
         return sdf == null ? "NULL" : sdf.format(l);
     }
+
+    public static LocationInfoUploadMsg getLocationMsg() {
+        return mLocationInfoUploadMsg;
+    }
+
+    public void changePath(Path path) {
+        pathView.setText(path.getPathNum());
+        directionView.setText(path.getDirection());
+    }
+
+    public String changeStation(Path path,String order) {
+        ArrayList<Station> stations = path.getStations();
+        String msg = null;
+        if (order.equals("-1")) {
+            currentStation.setText(stations.get(0).getName());
+            nextStation.setText(stations.get(1).getName());
+            return "-1";
+        }
+        if (order.equals(Constant.NEXT_STATION)) {
+                for (int i = 0; i < stations.size()-2; i++) {
+                if (currentStation.getText().equals(stations.get(i).getName())) {
+                    currentStation.setText(stations.get(i+1).getName());
+                    nextStation.setText(stations.get(i+2).getName());
+                    return Constant.NEXT_STATION;
+                }
+            }
+        }
+        if (order.equals(Constant.OUT_STATION)) {
+            for (int i = 0; i < stations.size()-2; i++) {
+                if (currentStation.getText().equals(stations.get(i).getName())) {
+                    msg = stations.get(i+1).getName();
+                }
+            }
+        }
+        if (order.equals(Constant.IN_STATION)) {
+            msg = currentStation.getText()+"";
+        }
+
+
+        for (int i = 0; i < stations.size()-2; i++){
+            if (order.equals(String.valueOf(stations.get(i).getOrder()))) {
+                currentStation.setText(stations.get(i).getName());
+                nextStation.setText(stations.get(i+1).getName());
+            }
+        }
+        return msg;
+
+
+    }
+
 }

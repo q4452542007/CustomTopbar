@@ -17,10 +17,27 @@
         android:background="@null"/>
 
     <Button
+        android:id="@+id/button_report"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginLeft="35dp"
+        android:layout_marginTop="50dp"
+        android:background="@null"/>
+
+    <Button
         android:id="@+id/button_option"
         android:layout_width="150dp"
         android:layout_height="150dp"
         android:layout_marginLeft="200dp"
         android:layout_marginTop="50dp"
         android:background="@null"/>
+
+    <Button
+        android:id="@+id/button_message"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginLeft="360dp"
+        android:background="@null"
+        android:layout_marginTop="50dp"
+        />
 </RelativeLayout>

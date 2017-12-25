@@ -13,7 +13,7 @@ import java.util.Date;
 public class LocationInfoUploadMsg extends PackageData {
 	// 告警信息
 	// byte[0-3]
-	private int warningFlagField = 524288;
+    public int warningFlagField = 524288;
 	// byte[4-7] 状态(DWORD(32))
 	private int statusField = 524291;
 	// byte[8-11] 纬度(DWORD(32))

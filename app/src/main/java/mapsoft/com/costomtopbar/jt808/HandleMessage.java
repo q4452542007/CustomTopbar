@@ -17,6 +17,7 @@ public class HandleMessage {
     private MsgEncoder mMsgEncoder;
     private ServerCommonRespMsgBody mServerCommonRespMsgBody;
     private TerminalRegisterMsgRespBody mTerminalRegisterMsgRespBody;
+    private ServerTextMsg mTextMsg;
     private BitOperator mBitOperator;
 
     public HandleMessage() {
@@ -24,11 +25,12 @@ public class HandleMessage {
         this.mMsgEncoder = new MsgEncoder();
         this.mServerCommonRespMsgBody = new ServerCommonRespMsgBody();
         this.mTerminalRegisterMsgRespBody = new TerminalRegisterMsgRespBody();
+        mTextMsg = new ServerTextMsg();
         this.mBitOperator = new BitOperator();
     }
 
     public int handleAllMessage(PackageData packageData) {
-        int a  = 0;
+        int a = 0;
         int s = packageData.getMsgHeader().getMsgId();
         switch (packageData.getMsgHeader().getMsgId()) {
             case TPMSConsts.cmd_terminal_register_resp:
@@ -40,24 +42,43 @@ public class HandleMessage {
                 mServerCommonRespMsgBody = mMsgDecoder.toServerCommonRespMsgBody(packageData);
                 a = handleServerCommonRespMsg(mServerCommonRespMsgBody);
                 break;
+
+            case TPMSConsts.msg_id_terminal_text_msg_issue:
+                mTextMsg = mMsgDecoder.toServerTextMsgBody(packageData);
+                a = handleServerTextMsgIssue(mTextMsg);
+                break;
             default:
                 break;
         }
         return a;
     }
 
+    private int handleServerTextMsgIssue(ServerTextMsg textMsg) {
+
+        return 60;
+    }
+
+   /* private int handleServerTextMsgIssue() {
+
+    }*/
+
     private int handleServerCommonRespMsg(ServerCommonRespMsgBody serverCommonRespMsgBody){
         int s = 0;
         switch (serverCommonRespMsgBody.getReplyId()) {
 
             //平台通用应答
+
+            //鉴权
             case TPMSConsts.msg_id_terminal_authentication:
                 s = handleTerminalAuthenticationResponse(serverCommonRespMsgBody);
                 break;
 
+            //心跳
             case TPMSConsts.msg_id_terminal_heart_beat:
                 s = handleTerminalHeatBeatResponse(serverCommonRespMsgBody);
                 break;
+
+            //位置信息上传
             case TPMSConsts.msg_id_terminal_location_info_upload:
                 s = handleLocationUploadResponse(serverCommonRespMsgBody);
                 break;
@@ -66,6 +87,11 @@ public class HandleMessage {
             case TPMSConsts.msg_id_terminal_log_out:
                 break;
 
+            case TPMSConsts.cmd_terminal_sign_in_resp:
+                s = handleTerminalSignInResponse(serverCommonRespMsgBody);
+                break;
+
+
             default:
                 break;
         }
@@ -73,16 +99,35 @@ public class HandleMessage {
 
     }
 
+    private int handleTerminalSignInResponse(ServerCommonRespMsgBody serverCommonRespMsgBody) {
+        int a = 0;
+        int s = serverCommonRespMsgBody.getReplyId();
+        switch (s) {
+            case 0:
+                Log.e(TAG,"考勤登入成功");
+                a = 50;
+                break;
+            case 1:
+                Log.e(TAG,"考勤登入失败");
+                a = 51;
+                break;
+            default:
+                break;
+        }
+        return a;
+    }
+
     private int handleTerminalRegisterResponse(TerminalRegisterMsgRespBody terminalRegisterMsgRespBody) {
+        int a = 0;
         int s = terminalRegisterMsgRespBody.getReplyToken();
         switch (s) {
             case 0:
                 Log.e(TAG,"注册成功");
-                s = 10;
+                a = 10;
                 break;
             case 1:
                 Log.e(TAG,"车辆已被注册");
-                s = 11;
+                a = 11;
                 break;
             case 2:
                 Log.e(TAG,"数据库中无该车辆");
@@ -96,7 +141,7 @@ public class HandleMessage {
             default:
                 break;
         }
-        return s;
+        return a;
     }
     private int handleTerminalAuthenticationResponse(ServerCommonRespMsgBody serverCommonRespMsgBody){
         int s = serverCommonRespMsgBody.getReplyCode();

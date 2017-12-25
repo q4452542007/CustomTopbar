@@ -254,7 +254,7 @@ public class MsgDecoder {
 
 	public LocationInfoUploadMsg toLocationInfoUploadMsg(PackageData packageData) {
 		LocationInfoUploadMsg ret = new LocationInfoUploadMsg(packageData);
-		final byte[] data = ret.getMsgBodyBytes();
+		byte[] data = ret.getMsgBodyBytes();
 
 		// 1. byte[0-3] 报警标志(DWORD(32))
 		ret.setWarningFlagField(this.parseIntFromBytes(data, 0, 3));
@@ -296,5 +296,15 @@ public class MsgDecoder {
 			e.printStackTrace();
 			return defaultVal;
 		}
+	}
+
+    public ServerTextMsg toServerTextMsgBody(PackageData packageData) {
+		ServerTextMsg textMsg = new ServerTextMsg();
+		byte[] data = packageData.getMsgBodyBytes();
+		textMsg.setText(parseStringFromBytes(data,1,data.length-1));
+		textMsg.setFlag(parseIntFromBytes(data,0,1));
+		textMsg.setReplyFlowId(packageData.getMsgHeader().getFlowId());
+		textMsg.setTerminalPhone(packageData.getMsgHeader().getTerminalPhone());
+		return textMsg;
 	}
 }

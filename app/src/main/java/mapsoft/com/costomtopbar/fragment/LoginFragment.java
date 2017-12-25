@@ -1,6 +1,6 @@
 package mapsoft.com.costomtopbar.fragment;
 
-import android.os.Build;
+import android.app.Activity;
 import android.os.Bundle;
 import android.secondbook.com.buttonfragment.R;
 import android.text.Editable;
@@ -13,10 +13,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import java.lang.reflect.Method;
 
-import mapsoft.com.costomtopbar.view.IconCut;
+import mapsoft.com.costomtopbar.jt808.DriverLoginMsg;
+import mapsoft.com.costomtopbar.jt808.MsgEncoder;
+
 
 /**
  * @author djl
@@ -31,27 +34,36 @@ public class LoginFragment extends BaseFragment implements View.OnClickListener{
 
     private EditText mUserEdit,mPwdEdit,mCurrentEdtView;
     
-    private Button btn1,btn2,btn3,btn4,btn5,btn6,btn7,btn8,btn9,btn0,btndelet;
+    private Button btn1,btn2,btn3,btn4,btn5,btn6,btn7,btn8,btn9,btn0,btndelet,signInBtn,signOutBtn;
 
     private Editable mEditable;
 
     private String mString;
 
+    private MsgEncoder mMsgEncoder;
+    private DriverLoginMsg mDriverLoginMsg;
+
+    private FragmentInteraction1 listener;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getActivity().getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_login_layout, container, false);
+        getActivity().getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         initView(view);
         return view;
     }
 
     private void initView(View v) {
-
+        mMsgEncoder = new MsgEncoder();
+        mDriverLoginMsg = new DriverLoginMsg();
+        signInBtn = (Button) v.findViewById(R.id.sign_in);
+        signInBtn.setOnClickListener(this);
+        signOutBtn = (Button) v.findViewById(R.id.sign_out);
         mUserView = (ImageView) v.findViewById(R.id.user_view);
         mUserEdit = (EditText) v.findViewById(R.id.user_edit);
         //mUserEdit.setInputType(InputType.TYPE_NULL);  //不显示光标
@@ -270,6 +282,29 @@ public class LoginFragment extends BaseFragment implements View.OnClickListener{
                     /*mCurrentEdtView.setText(mString.substring(0,mString.length()-2));*/
                     mCurrentEdtView.setSelection(mEditable.length());
                 }
+                break;
+            case R.id.sign_in:
+                String account = mUserEdit.getText().toString();
+                String pwd = mPwdEdit.getText().toString();
+                if (account.length()<3 | pwd.length()<3){
+                    Toast.makeText(getActivity(),"账号,密码最少三位",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                while (account.length() < 12){
+                    account = "0" + account;
+                }
+                while (pwd.length() < 12){
+                    pwd = "0" + pwd;
+                }
+                mDriverLoginMsg.setDriverId(account);
+                mDriverLoginMsg.setCompanyId("0000000000");
+                mDriverLoginMsg.setPwd(pwd);
+                listener.sendDriverMsg(mDriverLoginMsg);
+                signInBtn.setText("已登入");
+                break;
+
+            default:
+                break;
 
         }
 
@@ -283,4 +318,37 @@ public class LoginFragment extends BaseFragment implements View.OnClickListener{
             }
         }
     };
+
+    /**
+     * 定义了所有activity必须实现的接口
+     */
+    public interface FragmentInteraction1
+    {
+        /**
+         * Fragment 向Activity传递指令，这个方法可以根据需求来定义
+         * @param driverLoginMsg
+         */
+        void sendDriverMsg(DriverLoginMsg driverLoginMsg);
+
+
+    }
+
+    /**
+     * 当FRagmen被加载到activity的时候会被回调
+     * @param activity
+     */
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+
+        if(activity instanceof FragmentInteraction1)
+        {
+            listener = (FragmentInteraction1)activity;
+        }
+        else{
+            throw new IllegalArgumentException("activity must implements FragmentInteraction");
+        }
+
+    }
+
 }

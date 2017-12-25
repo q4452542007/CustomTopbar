@@ -32,4 +32,9 @@ public class Constant {
     public static String APP_PHOTO_DIR = Environment.
             getExternalStorageDirectory().getAbsolutePath().
             concat("/imooc_business/photo/");
+
+    public static final String myuser_id = "00";
+    public static final String NEXT_STATION = "-2";
+    public static final String IN_STATION = "-3";
+    public static final String OUT_STATION = "-4";
 }

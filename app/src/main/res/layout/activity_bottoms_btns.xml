@@ -78,8 +78,6 @@
             android:background="@drawable/dvr"
             >
 
-
-
             <!--<TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -96,16 +94,7 @@
             android:layout_weight="1"
             android:background="@drawable/hanhua"
             >
-                />
 
-            <!--<TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_toRightOf="@id/option_image_view"
-                android:text="@string/option_image_view_text"
-                android:textColor="@color/color_333333"
-                android:textSize="30sp"
-                />-->
         </RelativeLayout>
     </LinearLayout>
 </RelativeLayout>
