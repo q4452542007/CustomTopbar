@@ -5,9 +5,11 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- 这个权限用于进行网络定位-->
     <!-- 用于访问wifi网络信息，wifi信息会用于进行网络定位-->
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"></uses-permission>
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE">
+    </uses-permission>
     <!-- 获取运营商信息，用于支持提供运营商信息相关的接口-->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"></uses-permission>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE">
+    </uses-permission>
     <!-- 这个权限用于获取wifi的获取权限，wifi信息会用来进行网络定位-->
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
     <!-- 写入扩展存储，向扩展卡写入数据，用于写入离线定位数据-->
@@ -29,6 +31,9 @@
     </uses-permission>
     <uses-permission android:name="android.permission.VIBRATE">
     </uses-permission>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <uses-permission android:name="android.permission.SERIAL_PORT" />
 
     <uses-sdk
         android:minSdkVersion="16"
@@ -55,16 +60,38 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.LAUNCHER"/>
+
             </intent-filter>
         </activity>
         <activity android:name="mapsoft.com.costomtopbar.activity.TabLayoutActivity">
         </activity>
-        <activity android:name="mapsoft.com.costomtopbar.activity.MessageActivity">
+        <activity android:name="mapsoft.com.costomtopbar.activity.MessageActivity"
+                  android:windowSoftInputMode="stateHidden" >
         </activity>
+        <activity android:name="mapsoft.com.costomtopbar.activity.UdiskActivity"
+            >
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </activity>
+
         <service android:name="mapsoft.com.costomtopbar.service.socket.BackService" />
         <service android:name="mapsoft.com.costomtopbar.report.TTsService" />
+        <receiver android:name="mapsoft.com.costomtopbar.activity.MainActivity$BootBroadcastReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"></action>
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </receiver>
+        <service android:name="mapsoft.com.costomtopbar.service.socket.update.UpdateService"/>
+
 
     </application>
+
 
 
 </manifest>

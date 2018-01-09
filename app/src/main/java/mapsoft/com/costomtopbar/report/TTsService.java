@@ -17,6 +17,7 @@ import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechError;
 import com.iflytek.cloud.SpeechSynthesizer;
+import com.iflytek.cloud.SpeechUtility;
 import com.iflytek.cloud.SynthesizerListener;
 import com.iflytek.cloud.util.ResourceUtil;
 
@@ -87,6 +88,7 @@ public class TTsService extends Service{
     }*/
     private void init() {
         // 初始化合成对象
+        //SpeechUtility speechUtility = SpeechUtility.getUtility();
         mTts = SpeechSynthesizer.createSynthesizer(this, mTtsInitListener);
         // 云端发音人名称列表
         cloudVoicersEntries = getResources().getStringArray(R.array.voicer_cloud_entries);

@@ -302,7 +302,9 @@ public class MsgDecoder {
 		ServerTextMsg textMsg = new ServerTextMsg();
 		byte[] data = packageData.getMsgBodyBytes();
 		textMsg.setText(parseStringFromBytes(data,1,data.length-1));
-		textMsg.setFlag(parseIntFromBytes(data,0,1));
+		byte[] ss = new byte[1];
+		System.arraycopy(data, 0, ss, 0, 1);
+		textMsg.setFlag(bitOperator.getBinaryStrFromByte(ss[0]));
 		textMsg.setReplyFlowId(packageData.getMsgHeader().getFlowId());
 		textMsg.setTerminalPhone(packageData.getMsgHeader().getTerminalPhone());
 		return textMsg;

@@ -413,4 +413,23 @@ public class BitOperator {
         sb = new StringBuilder(tmp);
         return Integer.parseInt(sb.reverse().toString(), 2);
     }
+
+    public String getBinaryStrFromByte(byte b)
+    {
+        String result ="";
+        byte a = b; ;
+        for (int i = 0; i < 8; i++)
+        {
+            byte c=a;
+            a=(byte)(a>>1);
+            a=(byte)(a<<1);
+            if(a==c){
+                result="0"+result;
+            }else{
+                result="1"+result;
+            }
+            a=(byte)(a>>1);
+        }
+        return result;
+    }
 }

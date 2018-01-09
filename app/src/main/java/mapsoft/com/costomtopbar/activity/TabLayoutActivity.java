@@ -18,13 +18,14 @@ import mapsoft.com.costomtopbar.fragment.GPSFragment;
 import mapsoft.com.costomtopbar.fragment.ReportStationFragment;
 import mapsoft.com.costomtopbar.fragment.SIMFragment;
 import mapsoft.com.costomtopbar.fragment.SettingFragment;
+import mapsoft.com.costomtopbar.fragment.UpdateFragment;
 
 public class TabLayoutActivity extends BaseActivity {
 
     private TabLayout mTabLayout;
     private ViewPager mViewPager;
     private TabAdapter mTabAdapter;
-    public static final String[] tabTitle = new String[]{"GPS自检", "SIM卡自检", "参数设置", "自动报站"};
+    public static final String[] tabTitle = new String[]{"GPS自检", "SIM卡自检", "参数设置", "自动报站", "检查更新"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +51,9 @@ public class TabLayoutActivity extends BaseActivity {
             }
             if (i ==3 ) {
                 fragments.add(ReportStationFragment.newInstance(i));
+            }
+            if (i ==4 ) {
+                fragments.add(UpdateFragment.newInstance(i));
             }
 
         }

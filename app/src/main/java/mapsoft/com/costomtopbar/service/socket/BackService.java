@@ -397,7 +397,7 @@ public class BackService extends Service {
 									db.insert("chat",null,values);
 									db.close();
 									Intent text = new Intent(TEXT_ISSUE_ACTION);
-									text.putExtra("result",textMsg.getText());
+									text.putExtra("result",textMsg.getFlag()+","+textMsg.getText());
 									sendBroadcast(text);
 									break;
 								default:

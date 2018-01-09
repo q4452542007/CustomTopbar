@@ -9,6 +9,8 @@
     <color name="unit">#000000</color>
     <color name="next_station">#FFFFFFFF</color>
     <color name="color_333333">#333333</color>
+    <color name="color_d0d0d0">#d0d0d0</color>
+    <color name="color_666666">#666666</color>
 
     <color name="blue">#3399cc</color>
     <color name="green">#00cc33</color>

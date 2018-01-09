@@ -11,11 +11,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.ImageButton;
 
 import mapsoft.com.costomtopbar.activity.MainActivity;
 import mapsoft.com.costomtopbar.activity.MessageActivity;
 import mapsoft.com.costomtopbar.activity.TabLayoutActivity;
+
+import mapsoft.com.costomtopbar.activity.UdiskActivity;
 import mapsoft.com.costomtopbar.view.Topbar;
 
 /**
@@ -25,7 +26,7 @@ public class AffairFragment extends BaseFragment {
 
 
     private String title;
-    private Button carBtn, disputeBtn, recoverBtn, repairBtn, reportBtn, stopBtn, requestBtn, messageBtn, loginBtn, optionBtn;
+    private Button carBtn, disputeBtn, recoverBtn, repairBtn, reportBtn,accidentBtn, stopBtn, requestBtn, messageBtn, loginBtn, optionBtn;
     private Topbar mTopbar;
     private MainActivity.MyHandler mMyHandler;
     @Override
@@ -73,6 +74,23 @@ public class AffairFragment extends BaseFragment {
             public void onClick(View v) {
                 MainActivity mainActivity = (MainActivity) getActivity();
                 mainActivity.toReportFragment();
+            }
+        });
+        requestBtn = (Button) v.findViewById(R.id.button_request);
+        requestBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent udiskIntent = new Intent(getActivity(),
+                        UdiskActivity.class);
+                getActivity().startActivity(udiskIntent);
+            }
+        });
+        accidentBtn = (Button) v.findViewById(R.id.button_accident);
+        accidentBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MainActivity mainActivity = (MainActivity) getActivity();
+                mainActivity.toLogFragment();
             }
         });
 

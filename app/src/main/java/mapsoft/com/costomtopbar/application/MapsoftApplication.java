@@ -38,7 +38,7 @@ public class MapsoftApplication extends Application{
         param.append(",");
         // 设置使用v5+
         param.append(SpeechConstant.ENGINE_MODE+"="+SpeechConstant.MODE_MSC);
-        SpeechUtility.createUtility(MapsoftApplication.this, param.toString());
+        SpeechUtility.createUtility(getApplicationContext(), param.toString());
 
     }
     public static AMapLocationClient getAMapInstance() {

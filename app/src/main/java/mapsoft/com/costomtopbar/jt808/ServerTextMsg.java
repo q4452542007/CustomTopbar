@@ -6,7 +6,7 @@ package mapsoft.com.costomtopbar.jt808;
  */
 public class ServerTextMsg {
     private String text;
-    private int flag;
+    private String flag;
     // 终端手机号
     protected String terminalPhone;
     private int replyFlowId;
@@ -31,11 +31,11 @@ public class ServerTextMsg {
         this.text = text;
     }
 
-    public int getFlag() {
+    public String getFlag() {
         return flag;
     }
 
-    public void setFlag(int flag) {
+    public void setFlag(String flag) {
         this.flag = flag;
     }
     public int getReplyFlowId() {

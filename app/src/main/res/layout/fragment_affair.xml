@@ -17,6 +17,14 @@
         android:background="@null"/>
 
     <Button
+        android:id="@+id/button_accident"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginLeft="520dp"
+        android:layout_marginTop="265dp"
+        android:background="@null"/>
+
+    <Button
         android:id="@+id/button_report"
         android:layout_width="150dp"
         android:layout_height="150dp"
@@ -40,4 +48,13 @@
         android:background="@null"
         android:layout_marginTop="50dp"
         />
+    <Button
+        android:id="@+id/button_request"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_marginLeft="680dp"
+        android:layout_marginTop="50dp"
+        android:background="@null"/>
+
+
 </RelativeLayout>

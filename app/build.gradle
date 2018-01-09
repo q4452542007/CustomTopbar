@@ -1,6 +1,7 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
+
 android {
     compileSdkVersion 25
     buildToolsVersion '26.0.2'
@@ -17,9 +18,12 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+
     }
 
+
 }
+
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
@@ -36,9 +40,10 @@ dependencies {
     compile 'com.android.support:design:25.0.0'
     compile files('libs/classes.jar')
     compile files('libs/AMap_Location_V3.6.1_20171012.jar')
-    implementation files('libs/Msc.jar')
+    compile files('libs/Msc.jar')
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    //compile 'com.github.mjdev:libaums:0.5.5'
+    //compile project(path: ':imoocsdk')
+
 }
 repositories {
     mavenCentral()

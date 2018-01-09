@@ -8,6 +8,8 @@ import android.content.IntentFilter;
 import android.graphics.ImageFormat;
 import android.graphics.drawable.Drawable;
 import android.hardware.Camera;
+import android.hardware.SerialManager;
+import android.hardware.SerialPort;
 import android.media.MediaRecorder;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -35,6 +37,7 @@ import com.amap.api.location.AMapLocationListener;
 import com.amap.api.location.AMapLocationQualityReport;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -45,8 +48,10 @@ import mapsoft.com.costomtopbar.IBackService;
 import mapsoft.com.costomtopbar.activity.MainActivity;
 import mapsoft.com.costomtopbar.constant.Constant;
 import mapsoft.com.costomtopbar.jt808.LocationInfoUploadMsg;
+import mapsoft.com.costomtopbar.map2312.InBusPlateMsg;
 import mapsoft.com.costomtopbar.module.Path;
 import mapsoft.com.costomtopbar.module.Station;
+import mapsoft.com.costomtopbar.serial.MySerialManager;
 import mapsoft.com.costomtopbar.util.BCD8421Operater;
 import mapsoft.com.costomtopbar.view.IconCut;
 import mapsoft.com.costomtopbar.view.Topbar;
@@ -113,12 +118,18 @@ public class HomeFragment extends BaseFragment {
     private AMapLocationClientOption locationOption = null;
 
     private String time;
+
+    private InBusPlateMsg mInBusPlateMsg;
+
+    private MySerialManager mMySerialManager;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mLocationInfoUploadMsg = new LocationInfoUploadMsg();
         mBCD8421Operater = new BCD8421Operater();
 
+        mMySerialManager = MySerialManager.getInstance(getActivity());
+        mInBusPlateMsg = new InBusPlateMsg();
     }
 
     @Override
@@ -148,7 +159,7 @@ public class HomeFragment extends BaseFragment {
         LocationResult = (TextView) view.findViewById(R.id.latitude);
         LocationResult.setMovementMethod(ScrollingMovementMethod.getInstance());
         pathView = (TextView) view.findViewById(R.id.bus_path);
-        directionView = (TextView) view.findViewById(R.id.bus_speed);
+        directionView = (TextView) view.findViewById(R.id.direction_view);
         currentStation = (TextView) view.findViewById(R.id.current_station);
         nextStation = (TextView) view.findViewById(R.id.next_station);
         //wifiImage.setImageResource(R.drawable.nowifi1);
@@ -588,7 +599,16 @@ public class HomeFragment extends BaseFragment {
 
     public void changePath(Path path) {
         pathView.setText(path.getPathNum());
-        directionView.setText(path.getDirection());
+        directionView.setText(path.getDirection().equals("up")?"上行":"下行");
+        /*mMySerialManager.openPathPlatePort();
+        try {
+            mMySerialManager.sendPathPlateMsg(Integer.valueOf(path.getPathNum()),
+                    (path.getStations().get(0).getName()+" → "
+                            + path.getStations().get(path.getStations().size()-1).getName()+"\0").getBytes("GB2312"));
+            mMySerialManager.sendLcdChangePathMsg("342".getBytes("GB2312"));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }*/
     }
 
     public String changeStation(Path path,String order) {
@@ -597,14 +617,23 @@ public class HomeFragment extends BaseFragment {
         if (order.equals("-1")) {
             currentStation.setText(stations.get(0).getName());
             nextStation.setText(stations.get(1).getName());
+            /*mInBusPlateMsg.setDirection_flag(path.getDirection().equals("up")?0:1);
+            mInBusPlateMsg.setIn_out_flag(0);
+            mInBusPlateMsg.setCustom_flag(1);
+            mMySerialManager.sendLcdStationMsg(mInBusPlateMsg);*/
             return "-1";
         }
-        if (order.equals(Constant.NEXT_STATION)) {
+        if (order.equals(Constant.IN_STATION)) {
                 for (int i = 0; i < stations.size()-2; i++) {
                 if (currentStation.getText().equals(stations.get(i).getName())) {
+                    msg = stations.get(i).getName();
                     currentStation.setText(stations.get(i+1).getName());
                     nextStation.setText(stations.get(i+2).getName());
-                    return Constant.NEXT_STATION;
+                    /*mInBusPlateMsg.setDirection_flag(path.getDirection().equals("up")?0:1);
+                    mInBusPlateMsg.setIn_out_flag(0);
+                    mInBusPlateMsg.setCustom_flag(i+1);
+                    mMySerialManager.sendLcdStationMsg(mInBusPlateMsg);*/
+                    return msg;
                 }
             }
         }
@@ -612,12 +641,18 @@ public class HomeFragment extends BaseFragment {
             for (int i = 0; i < stations.size()-2; i++) {
                 if (currentStation.getText().equals(stations.get(i).getName())) {
                     msg = stations.get(i+1).getName();
+                    /*mInBusPlateMsg.setDirection_flag(path.getDirection().equals("up")?0:1);
+                    mInBusPlateMsg.setIn_out_flag(1);
+                    mInBusPlateMsg.setCustom_flag(i+1);
+                    mMySerialManager.sendLcdStationMsg(mInBusPlateMsg);*/
+                    return msg;
                 }
             }
         }
-        if (order.equals(Constant.IN_STATION)) {
+        /*if (order.equals(Constant.NEXT_STATION)) {
             msg = currentStation.getText()+"";
-        }
+            return Constant.IN_STATION;
+        }*/
 
 
         for (int i = 0; i < stations.size()-2; i++){

@@ -16,6 +16,8 @@ import android.content.ServiceConnection;
 
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.hardware.SerialManager;
+import android.hardware.SerialPort;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.kpocom.Gpioctljni;
@@ -37,6 +39,10 @@ import android.widget.Toast;
 import com.amap.api.location.AMapLocationClient;
 import com.amap.api.location.AMapLocationClientOption;
 import com.iflytek.cloud.SpeechSynthesizer;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -44,11 +50,13 @@ import mapsoft.com.costomtopbar.IBackService;
 
 import mapsoft.com.costomtopbar.ITTsService;
 import mapsoft.com.costomtopbar.constant.Constant;
+import mapsoft.com.costomtopbar.constant.MapSoftConsts;
 import mapsoft.com.costomtopbar.db.ChatSQLiteHelper;
 import mapsoft.com.costomtopbar.db.SharedPreferenceManager;
 import mapsoft.com.costomtopbar.fragment.AffairFragment;
 import mapsoft.com.costomtopbar.fragment.ChangePathFragment;
 import mapsoft.com.costomtopbar.fragment.HomeFragment;
+import mapsoft.com.costomtopbar.fragment.LogFragment;
 import mapsoft.com.costomtopbar.fragment.LoginFragment;
 import mapsoft.com.costomtopbar.fragment.DVRFragment;
 import mapsoft.com.costomtopbar.fragment.ManualReportFragment;
@@ -58,9 +66,12 @@ import mapsoft.com.costomtopbar.jt808.DriverLoginMsg;
 import mapsoft.com.costomtopbar.jt808.JT808ProtocolUtils;
 import mapsoft.com.costomtopbar.jt808.LocationInfoUploadMsg;
 import mapsoft.com.costomtopbar.jt808.MsgEncoder;
+import mapsoft.com.costomtopbar.map2312.PathPlateMsg;
+import mapsoft.com.costomtopbar.map2312.PlateMsgEncoder;
 import mapsoft.com.costomtopbar.module.Path;
 import mapsoft.com.costomtopbar.report.GeofenceService;
 import mapsoft.com.costomtopbar.report.TTsService;
+import mapsoft.com.costomtopbar.serial.MySerialManager;
 import mapsoft.com.costomtopbar.service.socket.BackService;
 import mapsoft.com.costomtopbar.util.BitOperator;
 import mapsoft.com.costomtopbar.util.Utils;
@@ -75,6 +86,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
     private static HomeFragment mHomeFragment;
     private LoginFragment mLoginFragment;
     private ManualReportFragment mManualReportFragment;
+    private LogFragment mLogFragment;
     private ChangePathFragment mChangePathFragment;
     private AffairFragment mAffairFragment;
     private DVRFragment mDVRFragment;
@@ -124,6 +136,8 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
     public static MyHandler mMyHandler;
     private TimeHandler handler;
 
+    private MySerialManager mMySerialManager;
+
     //检测报警
     private TimerTask task = null;
     private Timer timer = new Timer();
@@ -150,6 +164,8 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
     }
 
     private void initData() {
+        mMySerialManager = MySerialManager.getInstance(this);
+
         mMyHandler = new MyHandler(this);
         handler = new TimeHandler();
         String pathAndDi = SharedPreferenceManager.getInstance().getString(SharedPreferenceManager.PATH_SETTING, "65,up");
@@ -165,6 +181,8 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
             }
         };
         timer.schedule(task, 1000, 1000);
+
+
     }
 
     //后期收到回应清零
@@ -220,10 +238,6 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         // 开始服务
         registerReceiver();
         mGeofenceService.registerReceiver();
-        /*IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-        filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-        filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-        registerReceiver(usbReceiver, filter);*/
     }
 
     private void findById() {
@@ -238,11 +252,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         mDvrLayout = (RelativeLayout) findViewById(R.id.dvr_layout_view);
         mDvrLayout.setOnClickListener(this);
         mTalkLayout = (RelativeLayout) findViewById(R.id.talk_layout_view);
-        mTalkLayout.setOnClickListener(this);/*
-        mHomeView = (TextView) this.findViewById(R.id.home_image_view);
-        mPathView = (TextView) this.findViewById(R.id.path_image_view);
-        mAffairView = (TextView) this.findViewById(R.id.affair_image_view);
-        mOptionView = (TextView) this.findViewById(R.id.dvr_image_view);*/
+        mTalkLayout.setOnClickListener(this);
         mHomeLayout.setOnClickListener(this);
         mChangePathLayout.setOnClickListener(this);
         mAffairLayout.setOnClickListener(this);
@@ -262,26 +272,15 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
 
             @Override
             public void homeClick() {
+                mMySerialManager.openPathPlatePort();
 
-                try {
-                    Log.i(TAG, "是否为空：" + iBackService);
-                    if (iBackService == null) {
-                        Toast.makeText(getApplicationContext(),
-                                "没有连接，可能是服务器已断开", Toast.LENGTH_SHORT).show();
-                    } else {
-                        boolean isSend = iBackService.sendMessage(Constant.HEART);
-                        Toast.makeText(MainActivity.this,
-                                isSend ? "success" : "fail", Toast.LENGTH_SHORT)
-                        .show();
-                        //et.setText("");
-                    }
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
+                mMySerialManager.sendClearAdMsg();
+
             }
         });
-
     }
+
+
     private void hideFragment(Fragment fragment, FragmentTransaction ft){
         if(fragment != null){
             ft.hide(fragment);
@@ -326,6 +325,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                 hideFragment(mAffairFragment,fragmentTransaction);
                 hideFragment(mDVRFragment,fragmentTransaction);
                 hideFragment(mTalkFragment, fragmentTransaction);
+                hideFragment(mLogFragment, fragmentTransaction);
                 if (mChangePathFragment == null){
                     mChangePathFragment = new ChangePathFragment();
                     fragmentTransaction.add(R.id.fragment_content,mChangePathFragment);
@@ -347,6 +347,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                 hideFragment(mHomeFragment,fragmentTransaction);
                 hideFragment(mDVRFragment,fragmentTransaction);
                 hideFragment(mTalkFragment, fragmentTransaction);
+                hideFragment(mLogFragment, fragmentTransaction);
                 if (mAffairFragment == null){
                     mAffairFragment = new AffairFragment();
                     fragmentTransaction.add(R.id.fragment_content,mAffairFragment);
@@ -367,6 +368,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                 hideFragment(mHomeFragment,fragmentTransaction);
                 hideFragment(mAffairFragment,fragmentTransaction);
                 hideFragment(mTalkFragment, fragmentTransaction);
+                hideFragment(mLogFragment, fragmentTransaction);
                 if (mDVRFragment == null){
                     mDVRFragment = new DVRFragment();
                     fragmentTransaction.add(R.id.fragment_content, mDVRFragment);
@@ -386,6 +388,7 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
                 hideFragment(mHomeFragment,fragmentTransaction);
                 hideFragment(mAffairFragment,fragmentTransaction);
                 hideFragment(mDVRFragment,fragmentTransaction);
+                hideFragment(mLogFragment, fragmentTransaction);
                 if (mTalkFragment == null){
                     mTalkFragment = new TalkFragment();
                     fragmentTransaction.add(R.id.fragment_content,mTalkFragment);
@@ -443,6 +446,26 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
             fragmentTransaction.add(R.id.fragment_content,mManualReportFragment);
         } else {
             fragmentTransaction.show(mManualReportFragment);
+        }
+        fragmentTransaction.commit();
+    }
+    public void toLogFragment() {
+        fragmentTransaction = fm.beginTransaction();
+        mHomeLayout.setBackgroundResource(R.drawable.shouye);
+        mChangePathLayout.setBackgroundResource(R.drawable.xianlu);
+        mAffairLayout.setBackgroundResource(R.drawable.shijian);
+        mDvrLayout.setBackgroundResource(R.drawable.dvr);
+        mTalkLayout.setBackgroundResource(R.drawable.hanhua);
+        //显示LogFragment
+        hideFragment(mChangePathFragment,fragmentTransaction);
+        hideFragment(mAffairFragment,fragmentTransaction);
+        hideFragment(mDVRFragment,fragmentTransaction);
+        hideFragment(mTalkFragment, fragmentTransaction);
+        if (mLogFragment == null){
+            mLogFragment = new LogFragment();
+            fragmentTransaction.add(R.id.fragment_content,mLogFragment);
+        } else {
+            fragmentTransaction.show(mLogFragment);
         }
         fragmentTransaction.commit();
     }
@@ -517,7 +540,22 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
             else if (action.equals(BackService.TEXT_ISSUE_ACTION)) {
                     try {
                         String stringExtra = intent.getStringExtra("result");
-                        iTtsService.report("收到平台短信," + stringExtra);
+                        String flag = stringExtra.split(",")[0];
+                        if (flag.substring(3,4).equals("1")){
+                            iTtsService.report("收到平台短信," + stringExtra.split(",")[1]);
+                        }
+                        if (flag.substring(4,5).equals("1")){
+                            mMySerialManager.openPathPlatePort();
+                            String mm = stringExtra.split(",")[1];
+
+                            try {
+                                mMySerialManager.sendAdMsg((mm + "\0").getBytes("GB2312"));
+
+                            } catch (UnsupportedEncodingException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
                         mTopbar.setMessageButton(R.drawable.messagebar);
                     } catch (RemoteException e) {
                         e.printStackTrace();
@@ -581,7 +619,6 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
             count++;
             if (count == 8) {
                 mLocationInfoUploadMsg = locationInfo;
-
                 try {
                     Log.i(TAG, "是否为空：" + iBackService);
                     if (iBackService == null) {
@@ -675,6 +712,9 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
         }
     }
 
+    public void logMsg(String msg) {
+        mLogFragment.logd(msg);
+    }
 
     public static class MyHandler extends Handler {
 
@@ -717,58 +757,15 @@ public class MainActivity extends BaseActivity implements OnClickListener, HomeF
     }
     private static final String ACTION_USB_PERMISSION = "com.github.mjdev.libaums.USB_PERMISSION";
     private static final String TAG = MainActivity.class.getSimpleName();
-
-    private static final int COPY_STORAGE_PROVIDER_RESULT = 0;
-    private static final int OPEN_STORAGE_PROVIDER_RESULT = 1;
-    private static final int OPEN_DOCUMENT_TREE_RESULT = 2;
-
-    private static final int REQUEST_EXT_STORAGE_WRITE_PERM = 0;
-
-    private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
+    public class BootBroadcastReceiver extends BroadcastReceiver {
+        //重写onReceive方法
         @Override
         public void onReceive(Context context, Intent intent) {
-
-            String action = intent.getAction();
-            if (ACTION_USB_PERMISSION.equals(action)) {
-
-                UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-                if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-
-                    if (device != null) {
-                        //setupDevice();
-                    }
-                }
-
-            } else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
-                UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-
-                Log.d(TAG, "USB device attached");
-
-                // determine if connected device is a mass storage devuce
-                if (device != null) {
-                    //discoverDevice();
-                }
-            } else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
-                UsbDevice device = (UsbDevice) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-
-                Log.d(TAG, "USB device detached");
-
-                // determine if connected device is a mass storage devuce
-                if (device != null) {
-                    /*if (MainActivity.this.currentDevice != -1) {
-                        MainActivity.this.massStorageDevices[currentDevice].close();
-                    }
-                    // check if there are other devices or set action bar title
-                    // to no device if not
-                    discoverDevice();*/
-
-                }
-            }
-
+            //启动应用，参数为需要自动启动的应用的包名
+            Intent intent1 = getPackageManager().getLaunchIntentForPackage(getPackageName());
+            context.startActivity(intent);
         }
-    };
 
-
-
+    }
 
 }
